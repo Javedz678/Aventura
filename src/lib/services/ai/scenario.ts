@@ -236,6 +236,52 @@ class ScenarioService {
   }
 
   /**
+   * Robust JSON parsing that handles various markdown code block formats.
+   */
+  private parseJsonResponse<T>(content: string): T | null {
+    let jsonStr = content.trim();
+
+    // Method 1: Strip markdown code blocks if the response is wrapped in them
+    if (jsonStr.startsWith('```')) {
+      // Remove opening ``` with optional language identifier
+      jsonStr = jsonStr.replace(/^```(?:json|JSON)?\s*\n?/, '');
+      // Remove closing ```
+      jsonStr = jsonStr.replace(/\n?```\s*$/, '');
+      jsonStr = jsonStr.trim();
+    }
+
+    // Method 2: Try to parse as-is
+    try {
+      return JSON.parse(jsonStr) as T;
+    } catch {
+      // Continue to other methods
+    }
+
+    // Method 3: Extract JSON object {...} from anywhere in the string
+    const objectMatch = content.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+      try {
+        return JSON.parse(objectMatch[0]) as T;
+      } catch {
+        // Continue
+      }
+    }
+
+    // Method 4: Extract JSON array [...] from anywhere in the string
+    const arrayMatch = content.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      try {
+        return JSON.parse(arrayMatch[0]) as T;
+      } catch {
+        // Continue
+      }
+    }
+
+    log('All JSON parsing methods failed for:', content.substring(0, 200));
+    return null;
+  }
+
+  /**
    * Expand a user's seed prompt into a full setting description.
    */
   async expandSetting(
@@ -277,10 +323,15 @@ Expand this into a rich, detailed world suitable for interactive storytelling.`
 
     try {
       // Extract JSON from response (handle markdown code blocks)
-      let jsonStr = response.content;
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      let jsonStr = response.content.trim();
+      const jsonMatch = jsonStr.match(/```(?:json|JSON)?\s*\n?([\s\S]*?)\n?```/);
       if (jsonMatch) {
         jsonStr = jsonMatch[1].trim();
+      } else {
+        const jsonObjectMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (jsonObjectMatch) {
+          jsonStr = jsonObjectMatch[0];
+        }
       }
 
       const result = JSON.parse(jsonStr) as ExpandedSetting;
@@ -359,10 +410,15 @@ Expand and enrich these details while staying true to what I've provided.`
     log('Character elaboration response received', { length: response.content.length });
 
     try {
-      let jsonStr = response.content;
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      let jsonStr = response.content.trim();
+      const jsonMatch = jsonStr.match(/```(?:json|JSON)?\s*\n?([\s\S]*?)\n?```/);
       if (jsonMatch) {
         jsonStr = jsonMatch[1].trim();
+      } else {
+        const jsonObjectMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (jsonObjectMatch) {
+          jsonStr = jsonObjectMatch[0];
+        }
       }
 
       const result = JSON.parse(jsonStr) as GeneratedProtagonist;
@@ -441,10 +497,15 @@ Generate a compelling protagonist who would fit naturally into this world.`
     log('Protagonist response received', { length: response.content.length });
 
     try {
-      let jsonStr = response.content;
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      let jsonStr = response.content.trim();
+      const jsonMatch = jsonStr.match(/```(?:json|JSON)?\s*\n?([\s\S]*?)\n?```/);
       if (jsonMatch) {
         jsonStr = jsonMatch[1].trim();
+      } else {
+        const jsonObjectMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (jsonObjectMatch) {
+          jsonStr = jsonObjectMatch[0];
+        }
       }
 
       const result = JSON.parse(jsonStr) as GeneratedProtagonist;
@@ -508,10 +569,16 @@ Generate ${count} interesting supporting characters who would create compelling 
     log('Characters response received', { length: response.content.length });
 
     try {
-      let jsonStr = response.content;
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      let jsonStr = response.content.trim();
+      const jsonMatch = jsonStr.match(/```(?:json|JSON)?\s*\n?([\s\S]*?)\n?```/);
       if (jsonMatch) {
         jsonStr = jsonMatch[1].trim();
+      } else {
+        // For arrays, look for [...] pattern
+        const jsonArrayMatch = jsonStr.match(/\[[\s\S]*\]/);
+        if (jsonArrayMatch) {
+          jsonStr = jsonArrayMatch[0];
+        }
       }
 
       const result = JSON.parse(jsonStr) as GeneratedCharacter[];
@@ -645,28 +712,26 @@ Describe the environment and situation. Do NOT write anything ${userName} does, 
 
     log('Opening response received', { length: response.content.length });
 
-    try {
-      let jsonStr = response.content;
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1].trim();
-      }
-
-      const result = JSON.parse(jsonStr) as GeneratedOpening;
+    const result = this.parseJsonResponse<GeneratedOpening>(response.content);
+    if (result) {
       log('Opening parsed successfully', { title: result.title });
       return result;
-    } catch (error) {
-      log('Failed to parse opening response', error);
-      // Fallback: use the raw response as the scene
-      return {
-        scene: response.content,
-        title: title || 'Untitled Adventure',
-        initialLocation: {
-          name: expandedSetting?.keyLocations?.[0]?.name || 'Starting Location',
-          description: expandedSetting?.keyLocations?.[0]?.description || 'Where the story begins.',
-        },
-      };
     }
+
+    log('Failed to parse opening response, using fallback. Raw:', response.content.substring(0, 300));
+    // Fallback: use the raw response as the scene (strip any markdown artifacts)
+    let cleanedContent = response.content.trim();
+    // Remove markdown code block wrapper if present
+    cleanedContent = cleanedContent.replace(/^```(?:json|JSON)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+
+    return {
+      scene: cleanedContent,
+      title: title || 'Untitled Adventure',
+      initialLocation: {
+        name: expandedSetting?.keyLocations?.[0]?.name || 'Starting Location',
+        description: expandedSetting?.keyLocations?.[0]?.description || 'Where the story begins.',
+      },
+    };
   }
 
   /**

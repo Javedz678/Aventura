@@ -52,7 +52,8 @@ class AIService {
 
     // Build the system prompt with world state context
     const systemPromptOverride = story?.settings?.systemPromptOverride;
-    const systemPrompt = this.buildSystemPrompt(worldState, story?.templateId, undefined, mode, undefined, systemPromptOverride);
+    const pov = story?.settings?.pov;
+    const systemPrompt = this.buildSystemPrompt(worldState, story?.templateId, undefined, mode, undefined, systemPromptOverride, pov);
     log('System prompt built, length:', systemPrompt.length, 'mode:', mode);
 
     // Build conversation history
@@ -151,15 +152,17 @@ class AIService {
 
     // Build the system prompt with world state context
     const systemPromptOverride = story?.settings?.systemPromptOverride;
+    const pov = story?.settings?.pov;
     const systemPrompt = this.buildSystemPrompt(
       worldState,
       story?.templateId,
       undefined,
       mode,
       tieredContextBlock,
-      systemPromptOverride
+      systemPromptOverride,
+      pov
     );
-    log('System prompt built, length:', systemPrompt.length, 'mode:', mode);
+    log('System prompt built, length:', systemPrompt.length, 'mode:', mode, 'pov:', pov);
 
     // Build conversation history
     const messages: Message[] = [
@@ -384,7 +387,8 @@ class AIService {
     retrievedContext?: string,
     mode: 'adventure' | 'creative-writing' = 'adventure',
     tieredContextBlock?: string,
-    systemPromptOverride?: string
+    systemPromptOverride?: string,
+    pov?: 'first' | 'second' | 'third'
   ): string {
     // Use custom system prompt if provided (from wizard-generated stories)
     let basePrompt = '';
@@ -407,6 +411,19 @@ class AIService {
         basePrompt = settings.storyGenerationSettings.adventurePrompt;
       }
     }
+
+    // Add POV-specific instructions
+    if (pov === 'third') {
+      // Find protagonist name for third person narration
+      const protagonist = worldState.characters.find(c => c.relationship === 'self');
+      const protagonistName = protagonist?.name || 'the protagonist';
+      basePrompt += `\n\n<pov_instruction>
+Write in THIRD PERSON. Refer to the player character as "${protagonistName}" or "they/them".
+Example: "${protagonistName} steps forward..." or "They examine the door..."
+Do NOT use "you" to refer to the player character.
+</pov_instruction>`;
+    }
+    // For first and second person, the default prompt already instructs to use "you"
 
     // Build world state context block
     let contextBlock = '';

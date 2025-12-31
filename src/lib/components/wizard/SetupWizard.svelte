@@ -85,7 +85,6 @@
   // Step 7: Generate Opening
   let storyTitle = $state('');
   let generatedOpening = $state<GeneratedOpening | null>(null);
-  let streamedOpening = $state('');
   let isGeneratingOpening = $state(false);
   let openingError = $state<string | null>(null);
 
@@ -294,12 +293,11 @@
   }
 
   // Step 7: Generate Opening
-  async function generateOpening() {
+  async function generateOpeningScene() {
     if (isGeneratingOpening) return;
 
     isGeneratingOpening = true;
     openingError = null;
-    streamedOpening = '';
 
     const wizardData: WizardData = {
       mode: selectedMode,
@@ -318,20 +316,7 @@
     };
 
     try {
-      // Stream the opening for real-time display
-      for await (const chunk of scenarioService.streamOpening(wizardData, settings.wizardSettings.openingGeneration)) {
-        if (chunk.content) {
-          streamedOpening += chunk.content;
-        }
-        if (chunk.done) break;
-      }
-
-      // Get the full structured opening
       generatedOpening = await scenarioService.generateOpening(wizardData, settings.wizardSettings.openingGeneration);
-      // Use streamed content if available
-      if (streamedOpening.trim()) {
-        generatedOpening.scene = streamedOpening;
-      }
     } catch (error) {
       console.error('Failed to generate opening:', error);
       openingError = error instanceof Error ? error.message : 'Failed to generate opening';
@@ -362,7 +347,7 @@
 
     // Generate opening if not already done
     if (!generatedOpening) {
-      await generateOpening();
+      await generateOpeningScene();
     }
 
     if (!generatedOpening) {
@@ -952,7 +937,7 @@
           {#if storyTitle.trim()}
             <button
               class="btn btn-secondary flex items-center gap-2"
-              onclick={generateOpening}
+              onclick={generateOpeningScene}
               disabled={isGeneratingOpening}
             >
               {#if isGeneratingOpening}
@@ -969,14 +954,14 @@
             <p class="text-sm text-red-400">{openingError}</p>
           {/if}
 
-          {#if streamedOpening || generatedOpening}
+          {#if generatedOpening}
             <div class="card bg-surface-900 p-4 max-h-64 overflow-y-auto">
               <h3 class="font-semibold text-surface-100 mb-2">
                 {generatedOpening?.title || storyTitle}
               </h3>
               <div class="prose prose-invert prose-sm max-w-none">
                 <p class="text-surface-300 whitespace-pre-wrap">
-                  {streamedOpening || generatedOpening?.scene || ''}
+                  {generatedOpening?.scene || ''}
                 </p>
               </div>
             </div>
