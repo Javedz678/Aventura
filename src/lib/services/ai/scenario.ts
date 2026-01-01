@@ -14,8 +14,8 @@ function log(...args: any[]) {
 // Default model for scenario generation - fast and capable
 export const SCENARIO_MODEL = 'deepseek/deepseek-v3.2';
 
-// Provider preference - prioritize Deepseek with fallbacks
-export const SCENARIO_PROVIDER = { order: ['deepseek'] };
+// Provider preference - prioritize Deepseek with fallbacks, require all parameters
+export const SCENARIO_PROVIDER = { order: ['deepseek'], require_parameters: true };
 
 export type Genre = 'fantasy' | 'scifi' | 'modern' | 'horror' | 'mystery' | 'romance' | 'custom';
 export type Tense = 'past' | 'present';

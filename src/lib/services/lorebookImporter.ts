@@ -240,9 +240,7 @@ Respond with ONLY valid JSON in this exact format:
         temperature: 0.1,
         maxTokens: 1000,
         extraBody: {
-          reasoning: {
-            max_tokens: 2000,
-          },
+          reasoning: { effort: 'none' },
         },
       });
 

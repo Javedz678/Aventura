@@ -83,7 +83,9 @@ class AIService {
     }
 
     // Build extra body for provider-specific options
-    const extraBody: Record<string, unknown> = {};
+    const extraBody: Record<string, unknown> = {
+      provider: { order: ['deepseek'], require_parameters: true },
+    };
     if (settings.apiSettings.enableThinking) {
       // Enable extended thinking with a reasonable token budget
       // Reasoning tokens are NOT included in responses, per user requirement
@@ -224,7 +226,9 @@ class AIService {
     log('Conversation history built', { visibleEntries: entries.length });
 
     // Build extra body for provider-specific options
-    const extraBody: Record<string, unknown> = {};
+    const extraBody: Record<string, unknown> = {
+      provider: { order: ['deepseek'], require_parameters: true },
+    };
     if (settings.apiSettings.enableThinking) {
       // Enable extended thinking with a reasonable token budget
       // Reasoning tokens are NOT included in responses, per user requirement
