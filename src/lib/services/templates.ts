@@ -26,7 +26,7 @@ export const BUILTIN_TEMPLATES: Omit<Template, 'createdAt'>[] = [
 
 ## Guidelines:
 - Write in second person ("You see...", "You feel...")
-- Responses should be 2-4 paragraphs
+- Length: Around 250 words per response
 - Include sensory details (sights, sounds, smells)
 - NPCs should have distinct personalities
 - Combat should be exciting but not gratuitously violent
@@ -72,7 +72,7 @@ export const BUILTIN_TEMPLATES: Omit<Template, 'createdAt'>[] = [
 
 ## Guidelines:
 - Write in second person ("You see...", "You feel...")
-- Responses should be 2-4 paragraphs
+- Length: Around 250 words per response
 - Make technology feel lived-in, not sterile
 - Alien cultures should feel genuinely foreign
 - Include ethical dilemmas and moral complexity
@@ -119,7 +119,7 @@ export const BUILTIN_TEMPLATES: Omit<Template, 'createdAt'>[] = [
 
 ## Guidelines:
 - Write in second person ("You notice...", "You deduce...")
-- Responses should be 2-4 paragraphs
+- Length: Around 250 words per response
 - Include sensory details that might be clues
 - NPCs should be consistent but may lie or omit
 - Never solve the mystery for the player
@@ -166,7 +166,7 @@ export const BUILTIN_TEMPLATES: Omit<Template, 'createdAt'>[] = [
 
 ## Guidelines:
 - Write in second person ("Your heart pounds...", "You hear...")
-- Responses should be 2-4 paragraphs
+- Length: Around 250 words per response
 - Never let the player feel completely safe
 - Horror should unsettle, not merely disgust
 - Give the player agency but make choices difficult
@@ -212,7 +212,7 @@ export const BUILTIN_TEMPLATES: Omit<Template, 'createdAt'>[] = [
 
 ## Guidelines:
 - Write in second person ("You smile...", "You remember...")
-- Responses should be 2-4 paragraphs
+- Length: Around 250 words per response
 - Focus on internal experience as much as external
 - NPCs should feel like real people with real lives
 - Embrace quiet moments and comfortable silences
@@ -244,7 +244,7 @@ export const BUILTIN_TEMPLATES: Omit<Template, 'createdAt'>[] = [
 
 ## Guidelines:
 - Write in second person ("You see...", "You feel...")
-- Responses should be 2-4 paragraphs
+- Length: Around 250 words per response
 - Match the tone and genre the player establishes
 - Be responsive to player choices and creativity
 - Create interesting characters and situations

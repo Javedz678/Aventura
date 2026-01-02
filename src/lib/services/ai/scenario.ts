@@ -1184,7 +1184,7 @@ Characters should rarely answer questions directly. Map each line to:
 - ${povInstruction}
 - ${tenseInstruction}
 - Tone: ${writingStyle.tone || 'engaging and immersive'}
-- Write 2-4 paragraphs per response
+- Length: Up to 500 words per response
 - Balance action, dialogue, and description
 </prose_architecture>
 
@@ -1234,7 +1234,7 @@ NPCs should feel like real people with their own agendas.
 - ${povInstruction}
 - ${tenseInstruction}
 - Tone: ${writingStyle.tone || 'immersive and engaging'}
-- Write 2-4 paragraphs per response
+- Length: Around 250 words per response
 - Vary sentence rhythm for impact
 </prose_architecture>
 

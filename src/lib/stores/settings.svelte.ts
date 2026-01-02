@@ -59,7 +59,7 @@ When [LOREBOOK CONTEXT] is provided, treat it as canonical:
 - Recapping previous events at the start of responses
 
 # Format
-- Length: 2-4 paragraphs per response
+- Length: Around 250 words per response
 - End at a moment of potential action—an NPC awaiting response, a door to open, a sound demanding investigation
 - Create a pregnant pause that naturally invites the player's next move`,
 
@@ -126,7 +126,7 @@ When [LOREBOOK CONTEXT] is provided, treat it as canonical:
 - Banned names: Elara, Kael, Lyra, Seraphina, Thorne, Astra, Zephyr, Caelan, Rowan (when male), Kai—use more distinctive names
 
 # Format
-- Length: 2-4 paragraphs per response
+- Length: Up to 500 words per response
 - End at natural narrative beats; preserve tension rather than resolving it artificially
 - Balance action, dialogue, and description`,
 };
