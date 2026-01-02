@@ -1,4 +1,4 @@
-import type { APISettings, UISettings, ThemeId } from '$lib/types';
+import type { APISettings, UISettings, ThemeId, UpdateSettings } from '$lib/types';
 import { database } from '$lib/services/database';
 import {
   type AdvancedWizardSettings,
@@ -445,6 +445,16 @@ export function getDefaultTimelineFillSettings(): TimelineFillSettings {
   };
 }
 
+// Update settings
+export function getDefaultUpdateSettings(): UpdateSettings {
+  return {
+    autoCheck: true,
+    autoDownload: false,
+    checkInterval: 24, // Check every 24 hours
+    lastChecked: null,
+  };
+}
+
 // Combined system services settings
 export interface SystemServicesSettings {
   classifier: ClassifierSettings;
@@ -493,6 +503,9 @@ class SettingsStore {
 
   // System services settings (classifier, memory, suggestions)
   systemServicesSettings = $state<SystemServicesSettings>(getDefaultSystemServicesSettings());
+
+  // Update settings
+  updateSettings = $state<UpdateSettings>(getDefaultUpdateSettings());
 
   initialized = $state(false);
 
@@ -582,6 +595,18 @@ class SettingsStore {
           };
         } catch {
           this.systemServicesSettings = getDefaultSystemServicesSettings();
+        }
+      }
+
+      // Load update settings
+      const updateSettingsJson = await database.getSetting('update_settings');
+      if (updateSettingsJson) {
+        try {
+          const loaded = JSON.parse(updateSettingsJson);
+          const defaults = getDefaultUpdateSettings();
+          this.updateSettings = { ...defaults, ...loaded };
+        } catch {
+          this.updateSettings = getDefaultUpdateSettings();
         }
       }
 
@@ -718,6 +743,36 @@ class SettingsStore {
     await this.saveSystemServicesSettings();
   }
 
+  // Update settings methods
+  async saveUpdateSettings() {
+    await database.setSetting('update_settings', JSON.stringify(this.updateSettings));
+  }
+
+  async setAutoCheck(enabled: boolean) {
+    this.updateSettings.autoCheck = enabled;
+    await this.saveUpdateSettings();
+  }
+
+  async setAutoDownload(enabled: boolean) {
+    this.updateSettings.autoDownload = enabled;
+    await this.saveUpdateSettings();
+  }
+
+  async setCheckInterval(hours: number) {
+    this.updateSettings.checkInterval = hours;
+    await this.saveUpdateSettings();
+  }
+
+  async setLastChecked(timestamp: number | null) {
+    this.updateSettings.lastChecked = timestamp;
+    await this.saveUpdateSettings();
+  }
+
+  async resetUpdateSettings() {
+    this.updateSettings = getDefaultUpdateSettings();
+    await this.saveUpdateSettings();
+  }
+
   /**
    * Reset ALL settings to their default values.
    * This preserves the API key but resets everything else.
@@ -751,6 +806,9 @@ class SettingsStore {
     // Reset system services settings
     this.systemServicesSettings = getDefaultSystemServicesSettings();
 
+    // Reset update settings
+    this.updateSettings = getDefaultUpdateSettings();
+
     // Save all to database
     await database.setSetting('default_model', this.apiSettings.defaultModel);
     await database.setSetting('temperature', this.apiSettings.temperature.toString());
@@ -763,6 +821,7 @@ class SettingsStore {
     await this.saveWizardSettings();
     await this.saveStoryGenerationSettings();
     await this.saveSystemServicesSettings();
+    await this.saveUpdateSettings();
 
     // Apply theme
     this.applyTheme(this.uiSettings.theme);

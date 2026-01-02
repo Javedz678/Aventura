@@ -3,6 +3,7 @@
   import { database } from '$lib/services/database';
   import { settings } from '$lib/stores/settings.svelte';
   import { grammarService } from '$lib/services/grammar';
+  import { updaterService } from '$lib/services/updater';
   import AppShell from '$lib/components/layout/AppShell.svelte';
 
   let initialized = $state(false);
@@ -18,6 +19,24 @@
 
       // Pre-load grammar checker WASM in background (don't await)
       grammarService.setup().catch(console.error);
+
+      // Check for updates on startup if enabled (don't await, run in background)
+      if (settings.updateSettings.autoCheck) {
+        updaterService.checkForUpdates()
+          .then(async (updateInfo) => {
+            if (updateInfo.available) {
+              console.log(`[Updater] Update available: v${updateInfo.version}`);
+              await settings.setLastChecked(Date.now());
+
+              // Auto-download if enabled
+              if (settings.updateSettings.autoDownload) {
+                console.log('[Updater] Auto-downloading update...');
+                updaterService.downloadAndInstall().catch(console.error);
+              }
+            }
+          })
+          .catch(console.error);
+      }
 
       initialized = true;
     } catch (e) {

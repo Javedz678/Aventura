@@ -9,7 +9,8 @@
     type AdvancedWizardSettings,
     SCENARIO_MODEL,
   } from '$lib/services/ai/scenario';
-  import { X, Key, Cpu, Palette, RefreshCw, Search, Settings2, RotateCcw, ChevronDown, ChevronUp, Brain, BookOpen, Lightbulb, Sparkles, Clock } from 'lucide-svelte';
+  import { X, Key, Cpu, Palette, RefreshCw, Search, Settings2, RotateCcw, ChevronDown, ChevronUp, Brain, BookOpen, Lightbulb, Sparkles, Clock, Download, Loader2 } from 'lucide-svelte';
+  import { updaterService, type UpdateInfo, type UpdateProgress } from '$lib/services/updater';
 
   let activeTab = $state<'api' | 'generation' | 'ui' | 'advanced'>('api');
 
@@ -41,6 +42,13 @@
   // Local state for API key (to avoid showing actual key)
   let apiKeyInput = $state('');
   let apiKeySet = $state(false);
+
+  // Update checking state
+  let updateInfo = $state<UpdateInfo | null>(null);
+  let isCheckingUpdates = $state(false);
+  let isDownloadingUpdate = $state(false);
+  let downloadProgress = $state<UpdateProgress | null>(null);
+  let updateError = $state<string | null>(null);
 
   // Model fetching state
   let models = $state<ModelInfo[]>([]);
@@ -176,6 +184,63 @@
     if (!confirmed) return;
 
     await settings.resetAllSettings(true);
+  }
+
+  async function handleCheckForUpdates() {
+    isCheckingUpdates = true;
+    updateError = null;
+
+    try {
+      updateInfo = await updaterService.checkForUpdates();
+      await settings.setLastChecked(Date.now());
+    } catch (error) {
+      updateError = error instanceof Error ? error.message : 'Failed to check for updates';
+    } finally {
+      isCheckingUpdates = false;
+    }
+  }
+
+  async function handleDownloadAndInstall() {
+    if (!updateInfo?.available) return;
+
+    isDownloadingUpdate = true;
+    updateError = null;
+
+    try {
+      const success = await updaterService.downloadAndInstall((progress) => {
+        downloadProgress = progress;
+      });
+
+      if (success) {
+        // Prompt user to restart
+        const restart = confirm(
+          `Update ${updateInfo.version} has been downloaded.\n\nRestart now to apply the update?`
+        );
+        if (restart) {
+          await updaterService.relaunch();
+        }
+      }
+    } catch (error) {
+      updateError = error instanceof Error ? error.message : 'Failed to download update';
+    } finally {
+      isDownloadingUpdate = false;
+      downloadProgress = null;
+    }
+  }
+
+  function formatLastChecked(timestamp: number | null): string {
+    if (!timestamp) return 'Never';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   }
 </script>
 
@@ -456,6 +521,132 @@
               }}
               class="h-5 w-5 rounded border-surface-600 bg-surface-700"
             />
+          </div>
+
+          <!-- Updates Section -->
+          <div class="border-t border-surface-700 pt-4 mt-4">
+            <div class="flex items-center gap-2 mb-3">
+              <Download class="h-5 w-5 text-accent-400" />
+              <h3 class="text-sm font-medium text-surface-200">Updates</h3>
+            </div>
+
+            <!-- Update Status -->
+            <div class="card bg-surface-900 p-3 mb-3">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <p class="text-sm text-surface-200">
+                    {#if updateInfo?.available}
+                      Update available: v{updateInfo.version}
+                    {:else if updateInfo !== null}
+                      You're up to date
+                    {:else}
+                      Check for updates
+                    {/if}
+                  </p>
+                  <p class="text-xs text-surface-500">
+                    Last checked: {formatLastChecked(settings.updateSettings.lastChecked)}
+                  </p>
+                </div>
+                <button
+                  class="btn btn-secondary text-sm flex items-center gap-2"
+                  onclick={handleCheckForUpdates}
+                  disabled={isCheckingUpdates || isDownloadingUpdate}
+                >
+                  {#if isCheckingUpdates}
+                    <Loader2 class="h-4 w-4 animate-spin" />
+                    Checking...
+                  {:else}
+                    <RefreshCw class="h-4 w-4" />
+                    Check
+                  {/if}
+                </button>
+              </div>
+
+              {#if updateError}
+                <p class="text-xs text-red-400 mt-2">{updateError}</p>
+              {/if}
+
+              {#if updateInfo?.available}
+                <div class="mt-3 pt-3 border-t border-surface-700">
+                  {#if updateInfo.body}
+                    <p class="text-xs text-surface-400 mb-3 line-clamp-3">{updateInfo.body}</p>
+                  {/if}
+
+                  {#if isDownloadingUpdate && downloadProgress}
+                    <div class="mb-2">
+                      <div class="flex justify-between text-xs text-surface-400 mb-1">
+                        <span>Downloading...</span>
+                        <span>
+                          {#if downloadProgress.total}
+                            {Math.round((downloadProgress.downloaded / downloadProgress.total) * 100)}%
+                          {:else}
+                            {Math.round(downloadProgress.downloaded / 1024 / 1024)}MB
+                          {/if}
+                        </span>
+                      </div>
+                      <div class="h-2 bg-surface-700 rounded-full overflow-hidden">
+                        <div
+                          class="h-full bg-accent-500 transition-all duration-300"
+                          style="width: {downloadProgress.total ? (downloadProgress.downloaded / downloadProgress.total) * 100 : 50}%"
+                        ></div>
+                      </div>
+                    </div>
+                  {:else}
+                    <button
+                      class="btn btn-primary text-sm w-full flex items-center justify-center gap-2"
+                      onclick={handleDownloadAndInstall}
+                      disabled={isDownloadingUpdate}
+                    >
+                      <Download class="h-4 w-4" />
+                      Download & Install v{updateInfo.version}
+                    </button>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+
+            <!-- Auto-update Settings -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <label class="text-sm font-medium text-surface-300">Check on startup</label>
+                  <p class="text-xs text-surface-500">Automatically check for updates when the app opens</p>
+                </div>
+                <button
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                  class:bg-accent-600={settings.updateSettings.autoCheck}
+                  class:bg-surface-600={!settings.updateSettings.autoCheck}
+                  onclick={() => settings.setAutoCheck(!settings.updateSettings.autoCheck)}
+                  aria-label="Toggle auto-check updates"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                    class:translate-x-6={settings.updateSettings.autoCheck}
+                    class:translate-x-1={!settings.updateSettings.autoCheck}
+                  ></span>
+                </button>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <div>
+                  <label class="text-sm font-medium text-surface-300">Auto-download updates</label>
+                  <p class="text-xs text-surface-500">Download updates automatically in the background</p>
+                </div>
+                <button
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                  class:bg-accent-600={settings.updateSettings.autoDownload}
+                  class:bg-surface-600={!settings.updateSettings.autoDownload}
+                  onclick={() => settings.setAutoDownload(!settings.updateSettings.autoDownload)}
+                  aria-label="Toggle auto-download updates"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                    class:translate-x-6={settings.updateSettings.autoDownload}
+                    class:translate-x-1={!settings.updateSettings.autoDownload}
+                  ></span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       {:else if activeTab === 'advanced'}

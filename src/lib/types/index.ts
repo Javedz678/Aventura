@@ -376,3 +376,10 @@ export interface UISettings {
   showWordCount: boolean;
   autoSave: boolean;
 }
+
+export interface UpdateSettings {
+  autoCheck: boolean;        // Check for updates on startup
+  autoDownload: boolean;     // Automatically download updates
+  checkInterval: number;     // Hours between update checks (0 = only on startup)
+  lastChecked: number | null; // Timestamp of last check
+}

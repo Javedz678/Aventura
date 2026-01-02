@@ -193,9 +193,6 @@ npm run build
 npm run preview
 ```
 
-## License
-
-MIT
 
 ## Acknowledgments
 
