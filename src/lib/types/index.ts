@@ -362,7 +362,8 @@ export interface UIState {
 
 // API Settings
 export interface APISettings {
-  openrouterApiKey: string | null;
+  openaiApiURL: string;
+  openaiApiKey: string | null;
   defaultModel: string;
   temperature: number;
   maxTokens: number;

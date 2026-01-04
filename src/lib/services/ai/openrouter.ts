@@ -1,3 +1,4 @@
+import type { APISettings } from '$lib/types';
 import type {
   AIProvider,
   GenerationRequest,
@@ -12,7 +13,7 @@ import type {
   AgenticMessage,
 } from './types';
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/' //Used as the default.
 const DEBUG = true;
 
 function log(...args: any[]) {
@@ -21,14 +22,14 @@ function log(...args: any[]) {
   }
 }
 
-export class OpenRouterProvider implements AIProvider {
+export class OpenAIProvider implements AIProvider {
   id = 'openrouter';
   name = 'OpenRouter';
 
-  private apiKey: string;
+  private settings: APISettings
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor(settings: APISettings ) {
+    this.settings = settings
   }
 
   async generateResponse(request: GenerationRequest): Promise<GenerationResponse> {
@@ -56,11 +57,11 @@ export class OpenRouterProvider implements AIProvider {
 
     log('Sending request to OpenRouter...');
 
-    const response = await fetch(OPENROUTER_API_URL, {
+    const response = await fetch(new URL('chat/completions', this.settings.openaiApiURL), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${this.settings.openaiApiKey}`,
         'HTTP-Referer': 'https://aventura.camp',
         'X-Title': 'Aventura',
       },
@@ -118,11 +119,11 @@ export class OpenRouterProvider implements AIProvider {
 
     log('Sending tool-enabled request to OpenRouter...');
 
-    const response = await fetch(OPENROUTER_API_URL, {
+    const response = await fetch(new URL('chat/completions', this.settings.openaiApiURL), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${this.settings.openaiApiKey}`,
         'HTTP-Referer': 'https://aventura.camp',
         'X-Title': 'Aventura',
       },
@@ -219,11 +220,11 @@ export class OpenRouterProvider implements AIProvider {
       requestBody.top_p = request.topP;
     }
 
-    const response = await fetch(OPENROUTER_API_URL, {
+    const response = await fetch(new URL('chat/completions', this.settings.openaiApiURL), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${this.settings.openaiApiKey}`,
         'HTTP-Referer': 'https://aventura.camp',
         'X-Title': 'Aventura',
       },
@@ -304,10 +305,11 @@ export class OpenRouterProvider implements AIProvider {
     try {
       log('Fetching models from OpenRouter API...');
 
-      const response = await fetch('https://openrouter.ai/api/v1/models', {
+      const response = await fetch(new URL('models', this.settings.openaiApiURL), {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
+          'Authorization': `Bearer ${this.settings.openaiApiKey}`,
         },
         signal: controller.signal,
       });

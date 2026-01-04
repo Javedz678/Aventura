@@ -1,4 +1,4 @@
-import type { OpenRouterProvider } from './openrouter';
+import type { OpenAIProvider as OpenAIProvider } from './openrouter';
 import type { Chapter, StoryEntry } from '$lib/types';
 import { settings } from '$lib/stores/settings.svelte';
 
@@ -75,10 +75,10 @@ export const DEFAULT_QUERY_ANSWER_PROMPT = `You answer specific questions about 
 // ===== Service Class =====
 
 export class TimelineFillService {
-  private provider: OpenRouterProvider;
+  private provider: OpenAIProvider;
   private settingsOverride?: Partial<TimelineFillSettings>;
 
-  constructor(provider: OpenRouterProvider, settingsOverride?: Partial<TimelineFillSettings>) {
+  constructor(provider: OpenAIProvider, settingsOverride?: Partial<TimelineFillSettings>) {
     this.provider = provider;
     this.settingsOverride = settingsOverride;
   }

@@ -1,4 +1,4 @@
-import type { OpenRouterProvider } from './openrouter';
+import type { OpenAIProvider as OpenAIProvider } from './openrouter';
 import type { StoryEntry, Character, Location, Item, StoryBeat, Entry } from '$lib/types';
 import { settings } from '$lib/stores/settings.svelte';
 
@@ -29,9 +29,9 @@ interface WorldStateContext {
 }
 
 export class ActionChoicesService {
-  private provider: OpenRouterProvider;
+  private provider: OpenAIProvider;
 
-  constructor(provider: OpenRouterProvider) {
+  constructor(provider: OpenAIProvider) {
     this.provider = provider;
   }
 

@@ -120,7 +120,7 @@
   let openingError = $state<string | null>(null);
 
   // Check if API key is configured
-  const hasApiKey = $derived(settings.hasApiKey);
+  const needsApiKey = $derived(settings.needsApiKey);
 
   // Genre options with icons
   const genres: { id: Genre; name: string; icon: typeof Wand2; description: string }[] = [
@@ -615,7 +615,7 @@
       importedLorebook = result;
 
       // Run LLM classification if we have entries and an API key
-      if (result.entries.length > 0 && settings.hasApiKey) {
+      if (result.entries.length > 0 && settings.needsApiKey) {
         isImporting = false;
         isClassifying = true;
         classificationProgress = { current: 0, total: result.entries.length };
@@ -715,7 +715,7 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto py-4 min-h-0">
-      {#if !hasApiKey}
+      {#if needsApiKey}
         <!-- API Key Warning -->
         <div class="flex flex-col items-center justify-center py-8 text-center">
           <div class="rounded-full bg-amber-500/20 p-4 mb-4">

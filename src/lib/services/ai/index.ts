@@ -1,5 +1,5 @@
 import { settings } from '$lib/stores/settings.svelte';
-import { OpenRouterProvider } from './openrouter';
+import { OpenAIProvider as OpenAIProvider } from './openrouter';
 import { BUILTIN_TEMPLATES } from '$lib/services/templates';
 import { ClassifierService, type ClassificationResult, type ClassificationContext } from './classifier';
 import { MemoryService, type ChapterAnalysis, type ChapterSummary, type RetrievalDecision, DEFAULT_MEMORY_CONFIG } from './memory';
@@ -35,12 +35,11 @@ interface WorldState {
 
 class AIService {
   private getProvider() {
-    const apiKey = settings.apiSettings.openrouterApiKey;
-    log('Getting provider, API key configured:', !!apiKey);
-    if (!apiKey) {
+    log('Getting provider, API key configured:', !!settings.apiSettings.openaiApiKey);
+    if (settings.needsApiKey) {
       throw new Error('No API key configured');
     }
-    return new OpenRouterProvider(apiKey);
+    return new OpenAIProvider(settings.apiSettings);
   }
 
   async generateResponse(
@@ -480,7 +479,7 @@ class AIService {
       hasRetrievedContext: !!retrievedChapterContext,
     });
 
-    let provider: OpenRouterProvider | null = null;
+    let provider: OpenAIProvider | null = null;
     try {
       provider = this.getProvider();
     } catch {
@@ -532,7 +531,7 @@ class AIService {
       hasActivationTracker: !!activationTracker,
     });
 
-    let provider: OpenRouterProvider | null = null;
+    let provider: OpenAIProvider | null = null;
     try {
       provider = this.getProvider();
     } catch {

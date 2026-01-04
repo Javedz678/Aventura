@@ -5,7 +5,7 @@
  */
 
 import type { Entry, EntryType, EntryInjectionMode, EntryCreator } from '$lib/types';
-import { OpenRouterProvider } from './ai/openrouter';
+import { OpenAIProvider as OpenAIProvider } from './ai/openrouter';
 import { settings } from '$lib/stores/settings.svelte';
 
 const DEBUG = true;
@@ -187,13 +187,14 @@ export async function classifyEntriesWithLLM(
 ): Promise<ImportedEntry[]> {
   if (entries.length === 0) return entries;
 
-  const apiKey = settings.apiSettings.openrouterApiKey;
+  const apiKey = settings.apiSettings.openaiApiKey;
+  const openaiApiURL = settings.apiSettings.openaiApiURL;
   if (!apiKey) {
     log('No API key available, skipping LLM classification');
     return entries;
   }
 
-  const provider = new OpenRouterProvider(apiKey);
+  const provider = new OpenAIProvider(settings.apiSettings);
   const BATCH_SIZE = 50;
   const MAX_CONCURRENT = 5;
   const classifiedEntries = [...entries];

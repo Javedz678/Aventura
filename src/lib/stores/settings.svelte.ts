@@ -4,6 +4,7 @@ import {
   type AdvancedWizardSettings,
   getDefaultAdvancedSettings,
 } from '$lib/services/ai/scenario';
+import { OPENROUTER_API_URL } from '$lib/services/ai/openrouter';
 
 // Default system prompts for story generation
 export const DEFAULT_STORY_PROMPTS = {
@@ -537,7 +538,8 @@ export function getDefaultSystemServicesSettings(): SystemServicesSettings {
 // Settings Store using Svelte 5 runes
 class SettingsStore {
   apiSettings = $state<APISettings>({
-    openrouterApiKey: null,
+    openaiApiKey: null,
+    openaiApiURL: OPENROUTER_API_URL,
     defaultModel: 'z-ai/glm-4.7',
     temperature: 0.8,
     maxTokens: 8192,
@@ -571,12 +573,14 @@ class SettingsStore {
 
     try {
       // Load API settings
-      const apiKey = await database.getSetting('openrouter_api_key');
+      const apiURL = await database.getSetting('openai_api_url') ?? OPENROUTER_API_URL; //Default to OpenRouter.
+      const apiKey = await database.getSetting('openai_api_key') ?? await database.getSetting('openrouter_api_key'); //Migrate API key location.
       const defaultModel = await database.getSetting('default_model');
       const temperature = await database.getSetting('temperature');
       const maxTokens = await database.getSetting('max_tokens');
 
-      if (apiKey) this.apiSettings.openrouterApiKey = apiKey;
+      if (apiURL) this.apiSettings.openaiApiURL = apiURL;
+      if (apiKey) this.apiSettings.openaiApiKey = apiKey;
       if (defaultModel) this.apiSettings.defaultModel = defaultModel;
       if (temperature) this.apiSettings.temperature = parseFloat(temperature);
       if (maxTokens) this.apiSettings.maxTokens = parseInt(maxTokens);
@@ -675,10 +679,14 @@ class SettingsStore {
       this.initialized = true; // Mark as initialized even on error to prevent infinite retries
     }
   }
+  async setApiURL(apiURL: string) {
+    this.apiSettings.openaiApiURL = apiURL;
+    await database.setSetting('openai_api_url', apiURL);
+  }
 
   async setApiKey(key: string) {
-    this.apiSettings.openrouterApiKey = key;
-    await database.setSetting('openrouter_api_key', key);
+    this.apiSettings.openaiApiKey = key;
+    await database.setSetting('openai_api_key', key);
   }
 
   async setDefaultModel(model: string) {
@@ -732,8 +740,9 @@ class SettingsStore {
     await database.setSetting('spellcheck_enabled', enabled.toString());
   }
 
-  get hasApiKey(): boolean {
-    return !!this.apiSettings.openrouterApiKey;
+  //Return true if the an api key is needed.
+  get needsApiKey(): boolean {
+    return (!this.apiSettings.openaiApiKey && this.apiSettings.openaiApiURL == OPENROUTER_API_URL);
   }
 
   // Wizard settings methods
@@ -839,14 +848,16 @@ class SettingsStore {
 
   /**
    * Reset ALL settings to their default values.
-   * This preserves the API key but resets everything else.
+   * This preserves the API key and URL but resets everything else.
    */
-  async resetAllSettings(preserveApiKey = true) {
-    const apiKey = preserveApiKey ? this.apiSettings.openrouterApiKey : null;
+  async resetAllSettings(preserveApiSettings = true) {
+    const apiKey = preserveApiSettings ? this.apiSettings.openaiApiKey : null;
+    const apiURL = preserveApiSettings ? this.apiSettings.openaiApiURL : OPENROUTER_API_URL;
 
-    // Reset API settings (except key if preserving)
+    // Reset API settings (except URL/key if preserving)
     this.apiSettings = {
-      openrouterApiKey: apiKey,
+      openaiApiURL: apiURL,
+      openaiApiKey: apiKey,
       defaultModel: 'z-ai/glm-4.7',
       temperature: 0.8,
       maxTokens: 8192,

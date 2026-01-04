@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { settings, DEFAULT_SERVICE_PROMPTS } from '$lib/stores/settings.svelte';
-  import { OpenRouterProvider } from '$lib/services/ai/openrouter';
+  import { OpenAIProvider, OPENROUTER_API_URL } from '$lib/services/ai/openrouter';
   import type { ModelInfo } from '$lib/services/ai/types';
   import type { ThemeId } from '$lib/types';
   import {
@@ -12,6 +12,18 @@
   import { X, Key, Cpu, Palette, RefreshCw, Search, Settings2, RotateCcw, ChevronDown, ChevronUp, Brain, BookOpen, Lightbulb, Sparkles, Clock, Download, Loader2 } from 'lucide-svelte';
   import { swipe } from '$lib/utils/swipe';
   import { updaterService, type UpdateInfo, type UpdateProgress } from '$lib/services/updater';
+
+  // Import lodash?
+  // import { debounce } from 'lodash';
+  // If not, Where should this go?
+	let timeout: number|null = 0;
+	const debounce = (to_run: Function, time: number = 100) => {
+		timeout && clearTimeout(timeout);
+		timeout = setTimeout(() => {
+			timeout = null;
+			to_run();
+		}, time);
+	};
 
   let activeTab = $state<'api' | 'generation' | 'ui' | 'advanced'>('api');
 
@@ -41,6 +53,7 @@
     openingGeneration: 'Opening Generation',
   };
 
+  let apiURLInput = $state(settings.apiSettings.openaiApiURL);
   // Local state for API key (to avoid showing actual key)
   let apiKeyInput = $state('');
   let apiKeySet = $state(false);
@@ -105,7 +118,7 @@
   });
 
   $effect(() => {
-    apiKeySet = !!settings.apiSettings.openrouterApiKey;
+    apiKeySet = !!settings.apiSettings.openaiApiKey;
   });
 
   // Fetch models on mount (public endpoint, no API key needed)
@@ -126,9 +139,9 @@
     modelError = null;
 
     try {
-      console.log('[SettingsModal] Creating OpenRouterProvider...');
-      // Models endpoint is public, doesn't need API key
-      const provider = new OpenRouterProvider('');
+      console.log('[SettingsModal] Creating OpenAIProvider...');
+      // The OpenRouter Models endpoint is public, doesn't need API key, but other providers may.
+      const provider = new OpenAIProvider(settings.apiSettings);
 
       console.log('[SettingsModal] Calling listModels...');
       const fetchedModels = await provider.listModels();
@@ -153,6 +166,18 @@
       isLoadingModels = false;
       console.log('[SettingsModal] fetchModels complete', { modelCount: models.length, error: modelError });
     }
+  }
+
+  async function saveApiURL(url:string = apiURLInput) {
+    apiURLInput = url;
+
+    let apiURL = new URL(url.trim())
+    //Require trailing slash.
+    if (!apiURL.pathname.endsWith('/')) {
+      apiURL.pathname += '/';
+    }
+    console.log("SET URL to", apiURL.href);
+    await settings.setApiURL(apiURL.href);
   }
 
   async function saveApiKey() {
@@ -323,7 +348,34 @@
         <div class="space-y-4">
           <div>
             <label class="mb-2 block text-sm font-medium text-surface-300">
-              OpenRouter API Key
+              API URL
+            </label>
+              <div class="flex gap-2">
+                <input
+                  type="text"
+                  bind:value={apiURLInput}
+                  oninput={() => debounce(() => {
+                      saveApiURL();
+                      handleRefreshModels();
+                    }, 1000)
+                  }
+                  placeholder="{OPENROUTER_API_URL}"
+                  class="input flex-1"
+                />
+                <button class="btn btn-secondary" onclick={() => {
+                  saveApiURL(OPENROUTER_API_URL);
+                  handleRefreshModels();
+                }}>
+                  Reset
+                </button>
+              </div>
+              <p class="mt-2 text-sm text-surface-500">Requires an OpenAI compatible /chat/completions endpoint.</p>
+              <p class="mt-2 text-xs text-surface-500">Try adding /v1 if it doesn't work.</p>
+          </div>
+
+          <div>
+            <label class="mb-2 block text-sm font-medium text-surface-300">
+              API Key
             </label>
             {#if apiKeySet}
               <div class="flex items-center gap-2">
@@ -352,9 +404,11 @@
                 </button>
               </div>
             {/if}
-            <p class="mt-2 text-sm text-surface-500">
-              Get your API key from <a href="https://openrouter.ai/keys" target="_blank" class="text-accent-400 hover:underline">openrouter.ai</a>
-            </p>
+              {#if (apiURLInput == OPENROUTER_API_URL)}
+              <p class="mt-2 text-sm text-surface-500">
+                Get your API key from <a href="https://openrouter.ai/keys" target="_blank" class="text-accent-400 hover:underline">openrouter.ai</a>
+              </p>
+            {/if}
           </div>
 
           <div>

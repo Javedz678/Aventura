@@ -816,11 +816,11 @@
     await tick();
 
     // Generate AI response with streaming
-    if (settings.hasApiKey) {
+    if (!settings.needsApiKey) {
       await generateResponse(userActionEntry.id, content);
     } else {
       log('No API key configured');
-      await story.addEntry('system', 'Please configure your OpenRouter API key in settings to enable AI generation.');
+      await story.addEntry('system', 'Please configure your API key in settings to enable AI generation.');
     }
   }
 
@@ -851,7 +851,7 @@
     ui.clearGenerationError();
 
     // Retry generation with the same user action
-    if (settings.hasApiKey) {
+    if (!settings.needsApiKey) {
       await generateResponse(userActionEntry.id, userActionEntry.content);
     }
   }
@@ -932,7 +932,7 @@
       await tick();
 
       // Regenerate
-      if (settings.hasApiKey) {
+      if (!settings.needsApiKey) {
         await generateResponse(userActionEntry.id, backup.userActionContent);
       }
     } catch (error) {

@@ -1,5 +1,5 @@
 import { settings } from '$lib/stores/settings.svelte';
-import { OpenRouterProvider } from './openrouter';
+import { OpenAIProvider, OPENROUTER_API_URL } from './openrouter';
 import type { Message } from './types';
 import type { StoryMode, POV, Character, Location, Item } from '$lib/types';
 
@@ -234,14 +234,12 @@ export interface GeneratedOpening {
     description: string;
   };
 }
-
 class ScenarioService {
   private getProvider() {
-    const apiKey = settings.apiSettings.openrouterApiKey;
-    if (!apiKey) {
+    if (settings.needsApiKey) {
       throw new Error('No API key configured');
     }
-    return new OpenRouterProvider(apiKey);
+    return new OpenAIProvider(settings.apiSettings);
   }
 
   /**
