@@ -720,25 +720,31 @@ Note: The story may be in Adventure mode (player as protagonist) or Creative Wri
 - Example: "the innkeeper who served a drink" = NO
 
 ### Visual Descriptors (CRITICAL for image generation)
-Visual descriptors enable consistent character visualization. The goal is to build a COMPLETE PICTURE of each character - someone reading just the descriptors should be able to clearly visualize and draw that character.
+Visual descriptors enable consistent character visualization. The goal is to build a COMPLETE PICTURE of each character - someone reading ONLY the descriptors should be able to clearly visualize and draw that character as if they had never seen them before.
 
-**For NEW characters:** Extract a COMPREHENSIVE visual description from the text and full chat history:
+**For NEW characters:** You MUST provide a COMPREHENSIVE visual description. Every new character MUST have descriptors covering ALL of these categories:
 - Face: skin tone, facial features, expression, age indicators
 - Hair: color, length, style, texture (e.g., "wavy auburn hair to shoulders")
 - Eyes: color, shape, notable features (e.g., "sharp green eyes")
 - Build: height, body type, posture (e.g., "tall and lean", "broad-shouldered")
 - Clothing: full outfit description (e.g., "worn leather armor over gray tunic, brown traveling cloak")
 - Accessories: jewelry, weapons, bags, distinctive items (e.g., "silver pendant", "sword at hip")
-- Distinguishing marks: scars, tattoos, birthmarks (e.g., "scar across left cheek")
+- Distinguishing marks: scars, tattoos, birthmarks if any (e.g., "scar across left cheek")
+
+**IMPORTANT**: If any category above is not explicitly described in the text, you MUST invent reasonable, consistent details based on the character's role, setting, and context. For example:
+- A blacksmith likely has muscular build, practical clothing, perhaps soot marks
+- A noble might have fine clothing, jewelry, well-groomed appearance
+- A traveler might have weathered features, travel-worn clothes, a pack
+Never leave a character without complete visual descriptors - invent plausible details to fill gaps.
 
 **For EXISTING characters:**
 - Add new descriptors when ANY visual detail is revealed - even minor clothing or accessory mentions
 - Update clothing descriptors when outfits change
 - Remove descriptors that no longer apply (removed cloak, changed clothes, healed scar)
 - Review the full chat history to catch visual details that may have been mentioned earlier
-- Do NOT invent descriptors not mentioned anywhere in the story
+- If an existing character is MISSING descriptors in any category above, invent reasonable ones now
 
-**Goal:** Each character's visual descriptors should be detailed enough that an artist could draw them accurately.
+**Goal:** Every character's visual descriptors should be detailed enough that an artist who has never seen them could draw them accurately and completely.
 
 ### Locations - ONLY extract if:
 - The scene takes place there or characters travel there
@@ -824,7 +830,7 @@ Items: {{existingItems}}
 
 ### Field Specifications
 
-characterUpdates: [{"name": "ExistingName", "changes": {"status": "active|inactive|deceased", "relationship": "new relationship", "newTraits": ["trait"], "removeTraits": ["trait"], "addVisualDescriptors": ["silver hair"], "removeVisualDescriptors": ["old cloak"]}}]
+characterUpdates: [{"name": "ExistingName", "changes": {"status": "active|inactive|deceased", "relationship": "new relationship", "newTraits": ["trait"], "removeTraits": ["trait"], "addVisualDescriptors": ["add new or fill in missing descriptors - invent if needed"], "removeVisualDescriptors": ["old cloak"]}}]
 
 locationUpdates: [{"name": "ExistingName", "changes": {"visited": true, "current": true, "descriptionAddition": "new detail learned"}}]
 
@@ -832,7 +838,7 @@ itemUpdates: [{"name": "ExistingName", "changes": {"quantity": 1, "equipped": tr
 
 storyBeatUpdates: [{"title": "ExistingBeatTitle", "changes": {"status": "completed|failed", "description": "optional updated description"}}]
 
-newCharacters: [{"name": "ProperName", "description": "one sentence", "relationship": "friend|enemy|ally|neutral|unknown", "traits": ["trait1"], "visualDescriptors": ["hair color", "clothing", "notable features"]}]
+newCharacters: [{"name": "ProperName", "description": "one sentence", "relationship": "friend|enemy|ally|neutral|unknown", "traits": ["trait1"], "visualDescriptors": ["MUST include: face/skin, hair, eyes, build, full clothing, accessories - invent plausible details if not described"]}]
 
 newLocations: [{"name": "ProperName", "description": "one sentence", "visited": true, "current": false}]
 
@@ -1514,7 +1520,7 @@ const semiRealisticAnimeStyleTemplate: PromptTemplate = {
   name: 'Semi-realistic Anime',
   category: 'image-style',
   description: 'Polished, cinematic, detailed rendering',
-  content: `Semi-realistic anime style with refined, polished rendering. Realistic proportions and features with anime influence. Detailed rendering on hair showing individual strands, subtle skin tones with natural variation, fabric folds with weight and texture. Naturalistic lighting with clear direction and soft falloff. Cinematic composition with intentional depth of field when appropriate. Rich, slightly desaturated colors with professional color grading. Painterly quality with polished, refined edges. Grounded and atmospheric mood. Suitable for urban environments, dramatic lighting, professional attire, night scenes, weather effects, detailed interiors. Avoid overly cartoonish expressions, flat colors, or chibi proportions.`,
+  content: `Digital anime art with polished, detailed rendering. NOT photorealistic - this is stylized anime/digital art with refined details. Anime-style eyes and facial features with expressive proportions. Detailed hair with visible strands, smooth skin with subtle shading, fabric with weight and texture. Clear directional lighting with soft falloff. Cinematic composition with depth of field. Rich colors with professional color grading. Clean linework with painterly rendering. Atmospheric and polished digital illustration style. Think high-quality anime key visual or game CG art. Avoid photorealism, 3D renders, or uncanny valley faces.`,
 };
 
 const photorealisticStyleTemplate: PromptTemplate = {
@@ -1534,40 +1540,51 @@ const imagePromptAnalysisTemplate: PromptTemplate = {
   content: `You identify visually striking moments in narrative text for image generation.
 
 ## Your Task
-Analyze the provided narrative and identify key visual moments that would make compelling images. For each moment, create a detailed image generation prompt and note the exact source text.
+Analyze the narrative and identify 0-{{maxImages}} key visual moments. Create DETAILED, descriptive image prompts (aim for 500-800 characters each). **Do NOT exceed 800 characters per prompt - prompts over 800 characters will cause an error and fail to generate.**
 
-**Maximum Images: {{maxImages}}** (0 means unlimited - use your judgment)
-
-## Style Guidelines
+## Style (MUST include in every prompt)
 {{imageStylePrompt}}
 
-## Character Visual Reference
-When depicting named characters, incorporate their established visual descriptors:
+**You MUST incorporate this full style description into every prompt.** Include multiple style keywords and rendering details.
+
+## Character Reference
 {{characterDescriptors}}
 
 ## Output Format
 Return a JSON array (no markdown, just raw JSON):
 [
   {
-    "prompt": "Detailed image generation prompt incorporating the style guidelines and character descriptors...",
-    "sourceText": "exact phrase from narrative (3-15 words, verbatim quote that will be matched case-insensitively)",
+    "prompt": "Detailed prompt (500-800 chars MAX) with full character appearance, scene details, and style description",
+    "sourceText": "exact phrase from narrative (3-15 words, verbatim)",
     "sceneType": "action|item|character|environment",
     "priority": 1-10
   }
 ]
 
-## Priority Guidelines
-- 8-10: Dramatic actions, combat, pivotal character moments
-- 6-8: Significant items, magical effects, important reveals
-- 5-7: Character introductions, emotional expressions
-- 3-5: Environmental establishing shots, atmosphere
+## Prompt Structure (follow this order)
+1. **Character appearance** - hair (color, length, style), eyes, skin tone, expression, build
+2. **Clothing/accessories** - what they're wearing, distinctive items
+3. **Action/pose** - what they're doing, body position
+4. **Setting/environment** - where they are, lighting, atmosphere, background details
+5. **Style keywords** - copy relevant phrases from the Style section above (lighting, rendering, aesthetic)
 
-## Rules
-1. sourceText MUST be a verbatim quote from the narrative (3-15 words)
-2. Include character visual descriptors when depicting named characters
-3. Return empty array [] if no suitable visual moments exist
-4. Skip: mundane actions, dialogue-only scenes, abstract concepts
-5. Respect the maximum images limit (unless 0/unlimited)`,
+## Example Good Prompt
+"An anime woman with shoulder-length black hair with subtle blue highlights, sharp teal eyes, and a focused expression. She's wearing a dark fitted coat with silver buttons and a grey scarf, one hand adjusting an earpiece. She's standing on a rain-slicked city rooftop at night, with glowing neon signs and distant skyscrapers blurred in the background. Semi-realistic anime style with refined features, detailed hair strands, realistic fabric and skin rendering, cinematic lighting with cool blue and warm neon accents. Polished and atmospheric with depth of field."
+
+## CRITICAL Rules
+1. **ONE CHARACTER PER IMAGE** - only depict a single character per prompt. Background details are fine, but no multiple characters. This ensures character consistency.
+2. **NEVER use character names** - the image model doesn't know who "Elena" is. Describe appearance only!
+3. **ALWAYS include the full style** - copy style keywords directly from the Style section
+4. **Stay under 800 characters** - prompts over 800 chars will ERROR and fail. Aim for 500-800.
+5. **sourceText** MUST be a verbatim quote from the narrative (3-15 words)
+6. Return empty array [] if no suitable visual moments exist
+7. Skip: mundane actions, dialogue-only scenes, abstract concepts
+
+## Priority Guidelines
+- 8-10: Dramatic actions, combat, pivotal moments
+- 6-8: Significant items, magical effects, reveals
+- 5-7: Character introductions, emotions
+- 3-5: Environmental shots, atmosphere`,
   userContent: `## Story Context
 {{chatHistory}}
 

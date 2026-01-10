@@ -47,7 +47,7 @@ export class ImageGenerationService {
     // Get prompt settings from image generation settings
     const imageSettings = settings.systemServicesSettings.imageGeneration;
     const promptSettings = {
-      model: imageSettings.promptModel || 'deepseek/deepseek-v3.2',
+      model: imageSettings.promptModel,
       temperature: imageSettings.promptTemperature,
       maxTokens: imageSettings.promptMaxTokens,
       reasoningEffort: imageSettings.reasoningEffort,

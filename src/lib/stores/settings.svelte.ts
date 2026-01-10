@@ -882,7 +882,7 @@ export function getDefaultImageGenerationSettings(): ImageGenerationServiceSetti
     maxImagesPerMessage: 3,
     autoGenerate: true,
     promptProfileId: DEFAULT_OPENROUTER_PROFILE_ID,
-    promptModel: 'deepseek/deepseek-v3.2',
+    promptModel: 'z-ai/glm-4.7',
     promptTemperature: 0.3,
     promptMaxTokens: 2048,
     reasoningEffort: 'off',
@@ -893,6 +893,7 @@ export function getDefaultImageGenerationSettings(): ImageGenerationServiceSetti
 
 export function getDefaultImageGenerationSettingsForProvider(provider: ProviderPreset): ImageGenerationServiceSettings {
   const promptProfileId = provider === 'nanogpt' ? DEFAULT_NANOGPT_PROFILE_ID : DEFAULT_OPENROUTER_PROFILE_ID;
+  const promptModel = provider === 'nanogpt' ? 'zai-org/glm-4.7' : 'z-ai/glm-4.7';
   return {
     enabled: false,
     nanoGptApiKey: '',  // Will be autofilled from NanoGPT profile if available
@@ -902,7 +903,7 @@ export function getDefaultImageGenerationSettingsForProvider(provider: ProviderP
     maxImagesPerMessage: 3,
     autoGenerate: true,
     promptProfileId,
-    promptModel: 'deepseek/deepseek-v3.2',
+    promptModel,
     promptTemperature: 0.3,
     promptMaxTokens: 2048,
     reasoningEffort: 'off',
