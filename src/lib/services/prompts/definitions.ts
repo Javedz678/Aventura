@@ -741,10 +741,14 @@ Never leave a character without complete visual descriptors - invent plausible d
 - Add new descriptors when ANY visual detail is revealed - even minor clothing or accessory mentions
 - Update clothing descriptors when outfits change
 - Remove descriptors that no longer apply (removed cloak, changed clothes, healed scar)
-- Review the full chat history to catch visual details that may have been mentioned earlier
 - If an existing character is MISSING descriptors in any category above, invent reasonable ones now
+- **PRUNE BLOAT**: Actively consolidate and remove redundant descriptors. Keep descriptions concise:
+  - Merge similar descriptors (e.g., "long dark hair" + "black hair to shoulders" → "long black hair to shoulders")
+  - Remove redundant adjectives (e.g., "beautiful elegant fine silk dress" → "fine silk dress")
+  - Remove descriptors that repeat the same information in different words
+  - One concise phrase per feature is better than multiple overlapping phrases
 
-**Goal:** Every character's visual descriptors should be detailed enough that an artist who has never seen them could draw them accurately and completely.
+**Goal:** Descriptors should be CONCISE but COMPLETE - detailed enough to draw the character, but without redundancy or bloat. Aim for ~5-10 descriptors per character, not 20+.
 
 ### Locations - ONLY extract if:
 - The scene takes place there or characters travel there
