@@ -243,13 +243,51 @@ class DatabaseService {
   }
 
   // Story entries operations
-  async getStoryEntries(storyId: string): Promise<StoryEntry[]> {
+  async getStoryEntries(storyId: string, options?: { limit?: number; offset?: number }): Promise<StoryEntry[]> {
     const db = await this.getDb();
-    const results = await db.select<any[]>(
-      'SELECT * FROM story_entries WHERE story_id = ? ORDER BY position ASC',
+    let query = 'SELECT * FROM story_entries WHERE story_id = ? ORDER BY position ASC';
+    const params: any[] = [storyId];
+
+    if (options?.limit !== undefined) {
+      query += ' LIMIT ?';
+      params.push(options.limit);
+      if (options?.offset !== undefined) {
+        query += ' OFFSET ?';
+        params.push(options.offset);
+      }
+    }
+
+    const results = await db.select<any[]>(query, params);
+    return results.map(this.mapStoryEntry);
+  }
+
+  /**
+   * Get the count of story entries without loading them all.
+   * Useful for UI display and pagination calculations.
+   */
+  async getStoryEntryCount(storyId: string): Promise<number> {
+    const db = await this.getDb();
+    const result = await db.select<{ count: number }[]>(
+      'SELECT COUNT(*) as count FROM story_entries WHERE story_id = ?',
       [storyId]
     );
-    return results.map(this.mapStoryEntry);
+    return result[0]?.count ?? 0;
+  }
+
+  /**
+   * Get the most recent story entries (for UI rendering).
+   * More efficient than loading all entries for large stories.
+   */
+  async getRecentStoryEntries(storyId: string, count: number): Promise<StoryEntry[]> {
+    const db = await this.getDb();
+    // Get the last N entries by position
+    const results = await db.select<any[]>(
+      `SELECT * FROM story_entries WHERE story_id = ?
+       ORDER BY position DESC LIMIT ?`,
+      [storyId, count]
+    );
+    // Reverse to get correct chronological order
+    return results.map(this.mapStoryEntry).reverse();
   }
 
   async addStoryEntry(entry: Omit<StoryEntry, 'createdAt'>): Promise<StoryEntry> {

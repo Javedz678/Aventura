@@ -48,6 +48,17 @@ class StoryStore {
   // Story library
   allStories = $state<Story[]>([]);
 
+  // Performance caches - avoid O(n) recalculations on every access
+  private _cachedWordCount: number = 0;
+  private _wordCountDirty: boolean = true;
+  private _cachedLastChapterEndIndex: number = 0;
+  private _lastChapterEndIndexDirty: boolean = true;
+  private _lastChaptersLength: number = 0;
+  private _lastEntriesLength: number = 0;
+
+  // Entry ID to index map for O(1) lookups
+  private _entryIdToIndex: Map<string, number> = new Map();
+
   // Derived states
   get currentLocation(): Location | undefined {
     return this.locations.find(l => l.current);
@@ -98,9 +109,21 @@ class StoryStore {
   }
 
   get wordCount(): number {
-    return this.entries.reduce((count, entry) => {
-      return count + entry.content.split(/\s+/).filter(Boolean).length;
-    }, 0);
+    // Use cached value if available, recalculate only when dirty
+    if (this._wordCountDirty) {
+      this._cachedWordCount = this.entries.reduce((count, entry) => {
+        return count + entry.content.split(/\s+/).filter(Boolean).length;
+      }, 0);
+      this._wordCountDirty = false;
+    }
+    return this._cachedWordCount;
+  }
+
+  /**
+   * Invalidate word count cache - call when entries are added/removed/modified
+   */
+  private invalidateWordCountCache(): void {
+    this._wordCountDirty = true;
   }
 
   get memoryConfig(): MemoryConfig {
@@ -118,17 +141,53 @@ class StoryStore {
   get lastChapterEndIndex(): number {
     if (this.chapters.length === 0) return 0;
 
+    // Check if cache is valid - invalidate if chapters or entries changed
+    const chaptersChanged = this.chapters.length !== this._lastChaptersLength;
+    const entriesChanged = this.entries.length !== this._lastEntriesLength;
+
+    if (chaptersChanged || entriesChanged || this._lastChapterEndIndexDirty) {
+      this._lastChaptersLength = this.chapters.length;
+      this._lastEntriesLength = this.entries.length;
+      this._cachedLastChapterEndIndex = this._computeLastChapterEndIndex();
+      this._lastChapterEndIndexDirty = false;
+    }
+
+    return this._cachedLastChapterEndIndex;
+  }
+
+  /**
+   * Rebuild the entry ID to index map for O(1) lookups.
+   * Called when entries array changes significantly.
+   */
+  private rebuildEntryIdIndex(): void {
+    this._entryIdToIndex.clear();
+    for (let i = 0; i < this.entries.length; i++) {
+      this._entryIdToIndex.set(this.entries[i].id, i);
+    }
+  }
+
+  /**
+   * Compute lastChapterEndIndex - internal implementation.
+   */
+  private _computeLastChapterEndIndex(): number {
+    if (this.chapters.length === 0) return 0;
+
+    // Rebuild index map if needed
+    if (this._entryIdToIndex.size !== this.entries.length) {
+      this.rebuildEntryIdIndex();
+    }
+
     // Sort chapters by number to ensure we get the actual last chapter
     const sortedChapters = [...this.chapters].sort((a, b) => a.number - b.number);
     const lastChapter = sortedChapters[sortedChapters.length - 1];
 
-    const endEntry = this.entries.find(e => e.id === lastChapter.endEntryId);
-    if (endEntry) {
-      return this.entries.indexOf(endEntry) + 1;
+    // Use O(1) map lookup instead of O(n) find + indexOf
+    const endIndex = this._entryIdToIndex.get(lastChapter.endEntryId);
+    if (endIndex !== undefined) {
+      return endIndex + 1;
     }
 
     // Fallback: if endEntryId references a deleted entry, estimate based on entry counts
-    // This prevents all entries from being treated as visible
     log('Warning: Chapter endEntryId not found, using fallback calculation', {
       chapterId: lastChapter.id,
       chapterNumber: lastChapter.number,
@@ -138,6 +197,14 @@ class StoryStore {
     // Sum up all chapter entry counts as a fallback estimate
     const totalChapterEntries = sortedChapters.reduce((sum, ch) => sum + ch.entryCount, 0);
     return Math.min(totalChapterEntries, this.entries.length);
+  }
+
+  /**
+   * Invalidate lastChapterEndIndex cache - call when chapters change
+   */
+  private invalidateChapterCache(): void {
+    this._lastChapterEndIndexDirty = true;
+    this._entryIdToIndex.clear(); // Force rebuild on next access
   }
 
   get messagesSinceLastChapter(): number {
@@ -203,10 +270,15 @@ class StoryStore {
 
   /**
    * Check if a specific entry has been summarized into a chapter.
+   * Uses O(1) map lookup for performance.
    */
   isEntrySummarized(entryId: string): boolean {
-    const entryIndex = this.entries.findIndex(e => e.id === entryId);
-    if (entryIndex === -1) return false;
+    // Ensure index map is up to date
+    if (this._entryIdToIndex.size !== this.entries.length) {
+      this.rebuildEntryIdIndex();
+    }
+    const entryIndex = this._entryIdToIndex.get(entryId);
+    if (entryIndex === undefined) return false;
     return entryIndex < this.lastChapterEndIndex;
   }
 
@@ -255,6 +327,8 @@ class StoryStore {
 
     if (chaptersToDelete.length > 0) {
       this.chapters = this.chapters.filter(ch => !chaptersToDelete.includes(ch.id));
+      // Invalidate chapter cache after deletions
+      this.invalidateChapterCache();
     }
 
     // Ensure chapters are sorted by number
@@ -304,6 +378,10 @@ class StoryStore {
     this.chapters = chapters;
     this.checkpoints = checkpoints;
     this.lorebookEntries = lorebookEntries;
+
+    // Reset all caches after loading
+    this.invalidateWordCountCache();
+    this.invalidateChapterCache();
 
     log('Story loaded', {
       id: storyId,
@@ -508,6 +586,10 @@ class StoryStore {
 
     this.entries = [...this.entries, entry];
 
+    // Invalidate caches
+    this.invalidateWordCountCache();
+    this.invalidateChapterCache();
+
     // Update story's updatedAt
     await database.updateStory(this.currentStory.id, {});
 
@@ -528,6 +610,9 @@ class StoryStore {
       e.id === entryId ? { ...e, content, metadata: updatedMetadata } : e
     );
 
+    // Invalidate word count cache (content changed)
+    this.invalidateWordCountCache();
+
     // Update story's updatedAt
     await database.updateStory(this.currentStory.id, {});
   }
@@ -538,6 +623,10 @@ class StoryStore {
 
     await database.deleteStoryEntry(entryId);
     this.entries = this.entries.filter(e => e.id !== entryId);
+
+    // Invalidate caches
+    this.invalidateWordCountCache();
+    this.invalidateChapterCache();
 
     // Update story's updatedAt
     await database.updateStory(this.currentStory.id, {});
@@ -614,6 +703,10 @@ class StoryStore {
 
     // Update in-memory state
     this.entries = this.entries.filter(e => e.position < position);
+
+    // Invalidate caches
+    this.invalidateWordCountCache();
+    this.invalidateChapterCache();
 
     // Update story's updatedAt
     await database.updateStory(this.currentStory.id, {});
@@ -1379,6 +1472,10 @@ class StoryStore {
     this.chapters = [];
     this.checkpoints = [];
 
+    // Reset all caches
+    this.invalidateWordCountCache();
+    this.invalidateChapterCache();
+
     // Clear current retry story ID (backups are kept per-story)
     ui.setCurrentRetryStoryId(null);
 
@@ -1413,6 +1510,10 @@ class StoryStore {
 
     await database.addChapter(chapter);
     this.chapters = [...this.chapters, chapter];
+
+    // Invalidate chapter cache
+    this.invalidateChapterCache();
+
     log('Chapter added:', chapter.number, chapter.title);
 
     // Emit event
@@ -1448,10 +1549,15 @@ class StoryStore {
   }
 
   // Get entries for a specific chapter
+  // Uses O(1) map lookups for performance
   getChapterEntries(chapter: Chapter): StoryEntry[] {
-    const startIdx = this.entries.findIndex(e => e.id === chapter.startEntryId);
-    const endIdx = this.entries.findIndex(e => e.id === chapter.endEntryId);
-    if (startIdx === -1 || endIdx === -1) return [];
+    // Ensure index map is up to date
+    if (this._entryIdToIndex.size !== this.entries.length) {
+      this.rebuildEntryIdIndex();
+    }
+    const startIdx = this._entryIdToIndex.get(chapter.startEntryId);
+    const endIdx = this._entryIdToIndex.get(chapter.endEntryId);
+    if (startIdx === undefined || endIdx === undefined) return [];
     return this.entries.slice(startIdx, endIdx + 1);
   }
 
@@ -1461,6 +1567,10 @@ class StoryStore {
 
     await database.deleteChapter(chapterId);
     this.chapters = this.chapters.filter(ch => ch.id !== chapterId);
+
+    // Invalidate chapter cache
+    this.invalidateChapterCache();
+
     log('Chapter deleted:', chapterId);
   }
 
@@ -1711,6 +1821,10 @@ class StoryStore {
     // Sort chapters by number to ensure correct ordering
     this.chapters = [...checkpoint.chaptersSnapshot].sort((a, b) => a.number - b.number);
 
+    // Invalidate caches after restore
+    this.invalidateWordCountCache();
+    this.invalidateChapterCache();
+
     // Restore time tracker (null clears)
     await this.restoreTimeTrackerSnapshot(checkpoint.timeTrackerSnapshot);
 
@@ -1802,6 +1916,10 @@ class StoryStore {
     this.items = items;
     this.storyBeats = storyBeats;
     this.lorebookEntries = lorebookEntries;
+
+    // Invalidate caches after state restore
+    this.invalidateWordCountCache();
+    this.invalidateChapterCache();
 
     // Debug: Verify memory state matches
     const finalCharDescriptors = this.characters.map(c => ({

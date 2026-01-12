@@ -8,6 +8,57 @@
 
   let storyContainer: HTMLDivElement;
 
+  // Virtualization: Only render recent entries by default for performance
+  // This dramatically improves performance with large stories (80k+ words)
+  const DEFAULT_VISIBLE_ENTRIES = 50;
+  const LOAD_MORE_BATCH = 50;
+
+  // Track how many entries to show (starts at DEFAULT_VISIBLE_ENTRIES)
+  let visibleEntryCount = $state(DEFAULT_VISIBLE_ENTRIES);
+
+  // Track the current story ID to detect story switches
+  let lastStoryId = $state<string | null>(null);
+
+  // Reset visible count when story changes
+  $effect(() => {
+    const currentStoryId = story.currentStory?.id ?? null;
+
+    // If story changed, reset the visible count
+    if (currentStoryId !== lastStoryId) {
+      lastStoryId = currentStoryId;
+      visibleEntryCount = DEFAULT_VISIBLE_ENTRIES;
+    }
+  });
+
+  // Compute which entries to render (using $derived.by for complex logic)
+  const displayedEntries = $derived.by(() => {
+    const entries = story.entries;
+    const total = entries.length;
+
+    if (total <= visibleEntryCount) {
+      return { entries, hiddenCount: 0, startIndex: 0 };
+    }
+
+    // Show the most recent entries
+    const startIndex = total - visibleEntryCount;
+    return {
+      entries: entries.slice(startIndex),
+      hiddenCount: startIndex,
+      startIndex,
+    };
+  });
+
+  function showMoreEntries() {
+    visibleEntryCount = Math.min(
+      visibleEntryCount + LOAD_MORE_BATCH,
+      story.entries.length
+    );
+  }
+
+  function showAllEntries() {
+    visibleEntryCount = story.entries.length;
+  }
+
   // Check if container is scrolled near bottom
   function isNearBottom(): boolean {
     if (!storyContainer) return true;
@@ -27,6 +78,9 @@
   }
 
   // Auto-scroll to bottom when new entries are added or streaming content changes
+  // Use requestAnimationFrame to batch scroll updates and avoid layout thrashing
+  let scrollRAF: number | null = null;
+
   $effect(() => {
     // Track both entries and streaming state for scroll
     const _ = story.entries.length;
@@ -35,9 +89,18 @@
     // Skip auto-scroll if user has scrolled up (persists until next user message)
     if (ui.userScrolledUp) return;
 
-    if (storyContainer) {
-      storyContainer.scrollTop = storyContainer.scrollHeight;
+    // Cancel any pending scroll to avoid redundant operations
+    if (scrollRAF !== null) {
+      cancelAnimationFrame(scrollRAF);
     }
+
+    // Batch scroll update with requestAnimationFrame for better performance
+    scrollRAF = requestAnimationFrame(() => {
+      if (storyContainer) {
+        storyContainer.scrollTop = storyContainer.scrollHeight;
+      }
+      scrollRAF = null;
+    });
   });
 </script>
 
@@ -57,7 +120,30 @@
           </p>
         </div>
       {:else}
-        {#each story.entries as entry (entry.id)}
+        <!-- Show collapsed entries indicator if there are hidden entries -->
+        {#if displayedEntries.hiddenCount > 0}
+          <div class="flex flex-col items-center gap-2 py-3 mb-3 border-b border-surface-700">
+            <p class="text-sm text-surface-400">
+              {displayedEntries.hiddenCount} earlier entries hidden for performance
+            </p>
+            <div class="flex gap-2">
+              <button
+                onclick={showMoreEntries}
+                class="px-3 py-1.5 text-xs font-medium text-surface-300 bg-surface-700 hover:bg-surface-600 rounded-md transition-colors"
+              >
+                Show {Math.min(LOAD_MORE_BATCH, displayedEntries.hiddenCount)} more
+              </button>
+              <button
+                onclick={showAllEntries}
+                class="px-3 py-1.5 text-xs font-medium text-surface-400 hover:text-surface-300 transition-colors"
+              >
+                Show all
+              </button>
+            </div>
+          </div>
+        {/if}
+
+        {#each displayedEntries.entries as entry (entry.id)}
           <StoryEntry {entry} />
         {/each}
 

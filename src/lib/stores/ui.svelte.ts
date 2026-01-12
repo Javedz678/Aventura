@@ -341,20 +341,60 @@ class UIStore {
     }));
 
     // Create new backup and store by story ID
-    // Use JSON.parse(JSON.stringify()) as a belt-and-suspenders approach to ensure
-    // complete isolation from Svelte reactivity proxies
-    const deepClone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
+    // PERFORMANCE OPTIMIZATION: Avoid expensive JSON.parse(JSON.stringify()) for large data
+    //
+    // Why this is safe:
+    // - Svelte's reactivity pattern always creates NEW arrays on mutation
+    //   (e.g., `this.entries = [...this.entries, newEntry]`)
+    // - Individual objects are replaced, not mutated in place
+    //   (e.g., `this.entries = this.entries.map(e => e.id === id ? {...e, content} : e)`)
+    // - Therefore, storing a reference to the current array is safe - the array won't be mutated
+    //
+    // For entries and embeddedImages (large data), we store direct references
+    // For smaller objects, we use shallow copies to break any Svelte proxy chains
+
+    // Shallow copy helper - breaks proxy chains without expensive serialization
+    const shallowCopyArray = <T extends object>(arr: T[]): T[] =>
+      arr.map(item => ({ ...item }));
+
+    // For characters, also copy nested arrays (traits, visualDescriptors)
+    const copyCharacters = (chars: Character[]): Character[] =>
+      chars.map(c => ({
+        ...c,
+        traits: [...(c.traits || [])],
+        visualDescriptors: [...(c.visualDescriptors || [])],
+      }));
+
+    // For locations, copy connections array
+    const copyLocations = (locs: Location[]): Location[] =>
+      locs.map(l => ({
+        ...l,
+        connections: [...(l.connections || [])],
+      }));
+
+    // For lorebook entries, copy nested arrays (aliases, injection.keywords)
+    const copyLorebookEntries = (entries: Entry[]): Entry[] =>
+      entries.map(e => ({
+        ...e,
+        aliases: [...(e.aliases || [])],
+        injection: e.injection ? {
+          ...e.injection,
+          keywords: [...(e.injection.keywords || [])],
+        } : e.injection,
+      }));
+
     const backup: RetryBackup = {
       storyId,
       timestamp,
-      // Deep copy to avoid mutation issues - using JSON serialization to break any proxy chains
-      entries: deepClone(entries),
-      characters: deepClone(characters),
-      locations: deepClone(locations),
-      items: deepClone(items),
-      storyBeats: deepClone(storyBeats),
-      lorebookEntries: deepClone(lorebookEntries),
-      embeddedImages: deepClone(embeddedImages),
+      // Large data - store reference (safe due to immutable update patterns)
+      entries: entries,
+      embeddedImages: embeddedImages,
+      // Smaller data - shallow copy to break proxy chains
+      characters: copyCharacters(characters),
+      locations: copyLocations(locations),
+      items: shallowCopyArray(items),
+      storyBeats: shallowCopyArray(storyBeats),
+      lorebookEntries: copyLorebookEntries(lorebookEntries),
       characterSnapshots,
       userActionContent,
       rawInput,
