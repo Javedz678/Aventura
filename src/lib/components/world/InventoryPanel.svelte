@@ -1,6 +1,6 @@
 <script lang="ts">
   import { story } from '$lib/stores/story.svelte';
-  import { Plus, Package, Shield, Pencil, Trash2, ArrowDown, ArrowUp, MapPin } from 'lucide-svelte';
+  import { Plus, Package, Shield, Pencil, Trash2, ArrowDown, ArrowUp, MapPin, ChevronDown, ChevronUp } from 'lucide-svelte';
   import type { Item } from '$lib/types';
 
   let showAddForm = $state(false);
@@ -15,8 +15,27 @@
   let confirmingDeleteId = $state<string | null>(null);
   let droppingItemId = $state<string | null>(null);
   let dropLocationId = $state<string>('');
+  let collapsedItems = $state<Set<string>>(new Set());
 
   const worldItems = $derived(story.items.filter(item => item.location !== 'inventory'));
+
+  function toggleCollapse(itemId: string) {
+    if (collapsedItems.has(itemId)) {
+      collapsedItems.delete(itemId);
+    } else {
+      collapsedItems.add(itemId);
+    }
+    collapsedItems = new Set(collapsedItems);
+  }
+
+  function getSectionLineCount(item: Item): number {
+    let lines = 0;
+    if (item.description) {
+      const words = item.description.split(/\s+/).length;
+      lines += Math.ceil(words / 8);
+    }
+    return lines;
+  }
 
   async function addItem() {
     if (!newName.trim()) return;
@@ -155,16 +174,35 @@
     <div class="space-y-2">
       <h4 class="text-sm font-medium text-surface-400">Equipped</h4>
       {#each story.equippedItems as item (item.id)}
+        {@const isCollapsed = collapsedItems.has(item.id)}
+        {@const sectionLineCount = getSectionLineCount(item)}
+        {@const needsCollapse = sectionLineCount > 4}
         <div class="card border-accent-500/30 bg-accent-500/5 p-3">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div class="flex min-w-0 items-center gap-2">
-              <Shield class="h-4 w-4 text-accent-400" />
-              <span class="break-words font-medium text-surface-100">{item.name}</span>
-              {#if item.quantity > 1}
-                <span class="text-sm text-surface-400">x{item.quantity}</span>
-              {/if}
+          <!-- Section 1: Icon, Name, and Quantity -->
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div class="flex min-w-0 items-start gap-2 flex-1">
+              <Shield class="h-4 w-4 text-accent-400 flex-shrink-0" />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="break-words font-medium text-surface-100">{item.name}</span>
+                  {#if item.quantity > 1}
+                    <span class="text-sm text-surface-400">x{item.quantity}</span>
+                  {/if}
+                </div>
+              </div>
             </div>
-            <div class="flex items-center gap-1 self-end sm:self-auto">
+          </div>
+
+          <!-- Section 2: Description -->
+          {#if item.description}
+            <div class="mt-3 space-y-2 rounded-md bg-surface-800/40" class:max-h-24={isCollapsed && needsCollapse} class:overflow-hidden={isCollapsed && needsCollapse}>
+              <p class="break-words text-sm text-surface-400">{item.description}</p>
+            </div>
+          {/if}
+
+          <!-- Action Buttons -->
+          <div class="flex items-center justify-between gap-1 self-end sm:self-auto mt-3">
+            <div class="flex items-center gap-1">
               <button
                 class="btn-ghost rounded p-1.5 text-surface-500 hover:text-surface-200 sm:p-1"
                 onclick={() => startEdit(item)}
@@ -187,10 +225,20 @@
                 <Trash2 class="h-3.5 w-3.5" />
               </button>
             </div>
+            {#if needsCollapse}
+              <button
+                class="btn-ghost rounded p-1.5 text-surface-500 hover:text-surface-200 sm:p-1"
+                onclick={() => toggleCollapse(item.id)}
+                title={isCollapsed ? 'Expand' : 'Collapse'}
+              >
+                {#if isCollapsed}
+                  <ChevronDown class="h-3.5 w-3.5" />
+                {:else}
+                  <ChevronUp class="h-3.5 w-3.5" />
+                {/if}
+              </button>
+            {/if}
           </div>
-          {#if item.description}
-            <p class="mt-1 break-words text-sm text-surface-400">{item.description}</p>
-          {/if}
           {#if editingId === item.id}
             <div class="mt-3 space-y-2">
               <input
@@ -288,10 +336,14 @@
         <h4 class="text-sm font-medium text-surface-400">Inventory</h4>
       {/if}
       {#each story.inventoryItems.filter(item => !item.equipped) as item (item.id)}
+        {@const isCollapsed = collapsedItems.has(item.id)}
+        {@const sectionLineCount = getSectionLineCount(item)}
+        {@const needsCollapse = sectionLineCount > 4}
         <div class="card p-3">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div class="flex min-w-0 items-start gap-2">
-              <div class="rounded-full bg-surface-700 p-1.5">
+          <!-- Section 1: Icon, Name, and Quantity -->
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div class="flex min-w-0 items-start gap-2 flex-1">
+              <div class="rounded-full bg-surface-700 p-1.5 flex-shrink-0">
                 <Package class="h-4 w-4 text-surface-400" />
               </div>
               <div class="min-w-0 flex-1">
@@ -301,12 +353,20 @@
                     <span class="text-sm text-surface-400">x{item.quantity}</span>
                   {/if}
                 </div>
-                {#if item.description}
-                  <p class="mt-1 break-words text-sm text-surface-400">{item.description}</p>
-                {/if}
               </div>
             </div>
-            <div class="flex items-center gap-1 self-end sm:self-auto">
+          </div>
+
+          <!-- Section 2: Description -->
+          {#if item.description}
+            <div class="mt-3 space-y-2 rounded-md bg-surface-800/40" class:max-h-24={isCollapsed && needsCollapse} class:overflow-hidden={isCollapsed && needsCollapse}>
+              <p class="break-words text-sm text-surface-400">{item.description}</p>
+            </div>
+          {/if}
+
+          <!-- Action Buttons -->
+          <div class="flex items-center justify-between gap-1 self-end sm:self-auto mt-3">
+            <div class="flex items-center gap-1">
               <button
                 class="btn-ghost rounded p-1.5 text-surface-500 hover:text-surface-200 sm:p-1"
                 onclick={() => startEdit(item)}
@@ -329,6 +389,19 @@
                 <Trash2 class="h-3.5 w-3.5" />
               </button>
             </div>
+            {#if needsCollapse}
+              <button
+                class="btn-ghost rounded p-1.5 text-surface-500 hover:text-surface-200 sm:p-1"
+                onclick={() => toggleCollapse(item.id)}
+                title={isCollapsed ? 'Expand' : 'Collapse'}
+              >
+                {#if isCollapsed}
+                  <ChevronDown class="h-3.5 w-3.5" />
+                {:else}
+                  <ChevronUp class="h-3.5 w-3.5" />
+                {/if}
+              </button>
+            {/if}
           </div>
           {#if editingId === item.id}
             <div class="mt-3 space-y-2">
@@ -421,10 +494,14 @@
     <div class="space-y-2">
       <h4 class="text-sm font-medium text-surface-400">World Items</h4>
       {#each worldItems as item (item.id)}
+        {@const isCollapsed = collapsedItems.has(item.id)}
+        {@const sectionLineCount = getSectionLineCount(item)}
+        {@const needsCollapse = sectionLineCount > 4}
         <div class="card p-3">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div class="flex min-w-0 items-start gap-2">
-              <div class="rounded-full bg-surface-700 p-1.5">
+          <!-- Section 1: Icon, Name, Quantity, and Location -->
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div class="flex min-w-0 items-start gap-2 flex-1">
+              <div class="rounded-full bg-surface-700 p-1.5 flex-shrink-0">
                 <Package class="h-4 w-4 text-surface-400" />
               </div>
               <div class="min-w-0 flex-1">
@@ -435,12 +512,20 @@
                   {/if}
                 </div>
                 <p class="mt-1 break-words text-xs text-surface-500">At {getLocationLabel(item.location)}</p>
-                {#if item.description}
-                  <p class="mt-1 break-words text-sm text-surface-400">{item.description}</p>
-                {/if}
               </div>
             </div>
-            <div class="flex items-center gap-1 self-end sm:self-auto">
+          </div>
+
+          <!-- Section 2: Description -->
+          {#if item.description}
+            <div class="mt-3 space-y-2 rounded-md bg-surface-800/40" class:max-h-24={isCollapsed && needsCollapse} class:overflow-hidden={isCollapsed && needsCollapse}>
+              <p class="break-words text-sm text-surface-400">{item.description}</p>
+            </div>
+          {/if}
+
+          <!-- Action Buttons -->
+          <div class="flex items-center justify-between gap-1 self-end sm:self-auto mt-3">
+            <div class="flex items-center gap-1">
               <button
                 class="btn-ghost rounded p-1.5 text-surface-500 hover:text-surface-200 sm:p-1"
                 onclick={() => startEdit(item)}
@@ -470,6 +555,19 @@
                 <Trash2 class="h-3.5 w-3.5" />
               </button>
             </div>
+            {#if needsCollapse}
+              <button
+                class="btn-ghost rounded p-1.5 text-surface-500 hover:text-surface-200 sm:p-1"
+                onclick={() => toggleCollapse(item.id)}
+                title={isCollapsed ? 'Expand' : 'Collapse'}
+              >
+                {#if isCollapsed}
+                  <ChevronDown class="h-3.5 w-3.5" />
+                {:else}
+                  <ChevronUp class="h-3.5 w-3.5" />
+                {/if}
+              </button>
+            {/if}
           </div>
           {#if editingId === item.id}
             <div class="mt-3 space-y-2">

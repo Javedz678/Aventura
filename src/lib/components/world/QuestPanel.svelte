@@ -1,6 +1,6 @@
 <script lang="ts">
   import { story } from '$lib/stores/story.svelte';
-  import { Plus, Target, CheckCircle, XCircle, Circle, Pencil, Trash2 } from 'lucide-svelte';
+  import { Plus, Target, CheckCircle, XCircle, Circle, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-svelte';
   import type { StoryBeat } from '$lib/types';
 
   let showAddForm = $state(false);
@@ -13,6 +13,25 @@
   let editType = $state<StoryBeat['type']>('quest');
   let editStatus = $state<StoryBeat['status']>('pending');
   let confirmingDeleteId = $state<string | null>(null);
+  let collapsedBeats = $state<Set<string>>(new Set());
+
+  function toggleCollapse(beatId: string) {
+    if (collapsedBeats.has(beatId)) {
+      collapsedBeats.delete(beatId);
+    } else {
+      collapsedBeats.add(beatId);
+    }
+    collapsedBeats = new Set(collapsedBeats);
+  }
+
+  function getSectionLineCount(beat: StoryBeat): number {
+    let lines = 0;
+    if (beat.description) {
+      const words = beat.description.split(/\s+/).length;
+      lines += Math.ceil(words / 8);
+    }
+    return lines;
+  }
 
   async function addBeat() {
     if (!newTitle.trim()) return;
@@ -138,10 +157,14 @@
       <h4 class="text-sm font-medium text-surface-400">Active</h4>
       {#each story.pendingQuests as beat (beat.id)}
         {@const StatusIcon = getStatusIcon(beat.status)}
+        {@const isCollapsed = collapsedBeats.has(beat.id)}
+        {@const sectionLineCount = getSectionLineCount(beat)}
+        {@const needsCollapse = sectionLineCount > 4}
         <div class="card p-3">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div class="flex min-w-0 items-start gap-2">
-              <div class={getStatusColor(beat.status)}>
+          <!-- Section 1: Icon, Title, and Type -->
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div class="flex min-w-0 items-start gap-2 flex-1">
+              <div class="{getStatusColor(beat.status)} flex-shrink-0">
                 <StatusIcon class="h-5 w-5" />
               </div>
               <div class="min-w-0 flex-1">
@@ -151,12 +174,20 @@
                     {getTypeLabel(beat.type)}
                   </span>
                 </div>
-                {#if beat.description}
-                  <p class="mt-1 break-words text-sm text-surface-400">{beat.description}</p>
-                {/if}
               </div>
             </div>
-            <div class="flex items-center gap-1 self-end sm:self-auto">
+          </div>
+
+          <!-- Section 2: Description -->
+          {#if beat.description}
+            <div class="mt-3 space-y-2 rounded-md bg-surface-800/40" class:max-h-24={isCollapsed && needsCollapse} class:overflow-hidden={isCollapsed && needsCollapse}>
+              <p class="break-words text-sm text-surface-400">{beat.description}</p>
+            </div>
+          {/if}
+
+          <!-- Action Buttons -->
+          <div class="flex items-center justify-between gap-1 self-end sm:self-auto mt-3">
+            <div class="flex items-center gap-1">
               {#if confirmingDeleteId === beat.id}
                 <button
                   class="btn-ghost rounded px-2 py-1 text-xs text-red-400 hover:bg-red-500/20"
@@ -187,6 +218,19 @@
                 </button>
               {/if}
             </div>
+            {#if needsCollapse}
+              <button
+                class="btn-ghost rounded p-1.5 text-surface-500 hover:text-surface-200 sm:p-1"
+                onclick={() => toggleCollapse(beat.id)}
+                title={isCollapsed ? 'Expand' : 'Collapse'}
+              >
+                {#if isCollapsed}
+                  <ChevronDown class="h-3.5 w-3.5" />
+                {:else}
+                  <ChevronUp class="h-3.5 w-3.5" />
+                {/if}
+              </button>
+            {/if}
           </div>
           {#if editingId === beat.id}
             <div class="mt-3 space-y-2">
@@ -246,15 +290,30 @@
         <h4 class="text-sm font-medium text-surface-400">History</h4>
         {#each completedBeats as beat (beat.id)}
           {@const StatusIcon = getStatusIcon(beat.status)}
+          {@const isCollapsed = collapsedBeats.has(beat.id)}
+          {@const sectionLineCount = getSectionLineCount(beat)}
+          {@const needsCollapse = sectionLineCount > 4}
           <div class="card p-3 opacity-60">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div class="flex items-center gap-2">
-                <div class={getStatusColor(beat.status)}>
+            <!-- Section 1: Icon and Title -->
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+              <div class="flex min-w-0 items-start gap-2 flex-1">
+                <div class="{getStatusColor(beat.status)} flex-shrink-0">
                   <StatusIcon class="h-4 w-4" />
                 </div>
                 <span class="break-words text-surface-300">{beat.title}</span>
               </div>
-              <div class="flex items-center gap-1 self-end sm:self-auto">
+            </div>
+
+            <!-- Section 2: Description -->
+            {#if beat.description}
+              <div class="mt-3 space-y-2 rounded-md bg-surface-800/40" class:max-h-24={isCollapsed && needsCollapse} class:overflow-hidden={isCollapsed && needsCollapse}>
+                <p class="break-words text-sm text-surface-400">{beat.description}</p>
+              </div>
+            {/if}
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-between gap-1 self-end sm:self-auto mt-3">
+              <div class="flex items-center gap-1">
                 {#if confirmingDeleteId === beat.id}
                   <button
                     class="btn-ghost rounded px-2 py-1 text-xs text-red-400 hover:bg-red-500/20"
@@ -285,6 +344,19 @@
                   </button>
                 {/if}
               </div>
+              {#if needsCollapse}
+                <button
+                  class="btn-ghost rounded p-1.5 text-surface-500 hover:text-surface-200 sm:p-1"
+                  onclick={() => toggleCollapse(beat.id)}
+                  title={isCollapsed ? 'Expand' : 'Collapse'}
+                >
+                  {#if isCollapsed}
+                    <ChevronDown class="h-3.5 w-3.5" />
+                  {:else}
+                    <ChevronUp class="h-3.5 w-3.5" />
+                  {/if}
+                </button>
+              {/if}
             </div>
             {#if editingId === beat.id}
               <div class="mt-3 space-y-2">

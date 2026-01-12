@@ -1,6 +1,6 @@
 <script lang="ts">
   import { story } from '$lib/stores/story.svelte';
-  import { Plus, MapPin, Eye, EyeOff, Navigation, Trash2, Pencil } from 'lucide-svelte';
+  import { Plus, MapPin, Eye, EyeOff, Navigation, Trash2, Pencil, ChevronDown, ChevronUp } from 'lucide-svelte';
   import type { Location } from '$lib/types';
 
   let showAddForm = $state(false);
@@ -10,6 +10,25 @@
   let editingId = $state<string | null>(null);
   let editName = $state('');
   let editDescription = $state('');
+  let collapsedLocations = $state<Set<string>>(new Set());
+
+  function toggleCollapse(locationId: string) {
+    if (collapsedLocations.has(locationId)) {
+      collapsedLocations.delete(locationId);
+    } else {
+      collapsedLocations.add(locationId);
+    }
+    collapsedLocations = new Set(collapsedLocations);
+  }
+
+  function getSectionLineCount(location: Location): number {
+    let lines = 0;
+    if (location.description) {
+      const words = location.description.split(/\s+/).length;
+      lines += Math.ceil(words / 8);
+    }
+    return lines;
+  }
 
   async function addLocation() {
     if (!newName.trim()) return;
@@ -151,13 +170,17 @@
   {:else}
     <div class="space-y-2">
       {#each story.locations.filter(l => !l.current) as location (location.id)}
+        {@const isCollapsed = collapsedLocations.has(location.id)}
+        {@const sectionLineCount = getSectionLineCount(location)}
+        {@const needsCollapse = sectionLineCount > 4}
         <div class="card p-3">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div class="flex min-w-0 items-start gap-2">
-              <div class="rounded-full bg-surface-700 p-1.5">
+          <!-- Section 1: Icon, Name, and Visited Status -->
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div class="flex min-w-0 items-start gap-2 flex-1">
+              <div class="rounded-full bg-surface-700 p-1.5 flex-shrink-0">
                 <MapPin class="h-4 w-4 text-surface-400" />
               </div>
-              <div class="min-w-0">
+              <div class="min-w-0 flex-1">
                 <span class="break-words font-medium text-surface-100">{location.name}</span>
                 <button
                   class="ml-2 text-xs transition-colors {location.visited ? 'text-surface-500 hover:text-surface-300' : 'text-surface-600 hover:text-surface-400'}"
@@ -170,12 +193,20 @@
                     <EyeOff class="inline h-3 w-3" /> unvisited
                   {/if}
                 </button>
-                {#if location.description}
-                  <p class="mt-1 break-words text-sm text-surface-400">{location.description}</p>
-                {/if}
               </div>
             </div>
-            <div class="flex items-center gap-1 self-end sm:self-auto">
+          </div>
+
+          <!-- Section 2: Description -->
+          {#if location.description}
+            <div class="mt-3 space-y-2 rounded-md bg-surface-800/40" class:max-h-24={isCollapsed && needsCollapse} class:overflow-hidden={isCollapsed && needsCollapse}>
+              <p class="break-words text-sm text-surface-400">{location.description}</p>
+            </div>
+          {/if}
+
+          <!-- Action Buttons -->
+          <div class="flex items-center justify-between gap-1 self-end sm:self-auto mt-3">
+            <div class="flex items-center gap-1">
               {#if confirmingDeleteId === location.id}
                 <button
                   class="btn-ghost rounded px-2 py-1 text-xs text-red-400 hover:bg-red-500/20"
@@ -212,6 +243,19 @@
                 </button>
               {/if}
             </div>
+            {#if needsCollapse}
+              <button
+                class="btn-ghost rounded p-1.5 text-surface-500 hover:text-surface-200 sm:p-1"
+                onclick={() => toggleCollapse(location.id)}
+                title={isCollapsed ? 'Expand' : 'Collapse'}
+              >
+                {#if isCollapsed}
+                  <ChevronDown class="h-3.5 w-3.5" />
+                {:else}
+                  <ChevronUp class="h-3.5 w-3.5" />
+                {/if}
+              </button>
+            {/if}
           </div>
           {#if editingId === location.id}
             <div class="mt-3 space-y-2">
