@@ -7,41 +7,78 @@ AI-powered interactive fiction and creative writing application built with Tauri
 ### Story Modes
 - **Adventure Mode** - Interactive fiction with multiple-choice actions and world tracking
 - **Creative Writing Mode** - Freeform collaborative writing with AI-generated suggestions
+- **POV Options** - First, second, or third person perspective
+- **Tense Control** - Past or present tense narrative style
 
 ### AI Integration
-- OpenRouter API integration for multiple LLM providers
+- OpenRouter API integration for 70+ LLM providers and models
 - Streaming responses with real-time text generation
 - Configurable models, temperature, and token limits
-- Extended thinking/reasoning support for compatible models
+- Extended thinking/reasoning support with configurable effort levels
+- Custom API endpoints for OpenAI-compatible providers
+- API profiles for saving multiple configurations
 
 ### Memory System
 - Automatic chapter summarization to manage context windows
 - Configurable token thresholds and chapter buffers
 - Manual chapter creation and resummarization
-- Memory retrieval for relevant past events
+- AI-powered memory retrieval for relevant past events
+- Chapter metadata tracking (keywords, characters, locations, plot threads)
+- In-story time tracking per chapter
 
 ### Lorebook
 - Unified entry system for characters, locations, items, factions, concepts, and events
 - Dynamic state tracking (relationships, inventory, discoveries)
-- Keyword-based and relevance-based injection
+- Keyword-based and relevance-based context injection
+- Hidden information and secrets system
+- Aliases for flexible entry referencing
 - Import/export support (JSON, YAML, SillyTavern format)
-- AI-assisted lore management and entry creation
+- SillyTavern character card import (V1/V2 JSON and PNG)
+- AI-assisted autonomous lore management agent
 
 ### Writing Tools
 - Local grammar checking powered by Harper.js (WebAssembly)
-- Style suggestions for creative writing
+- AI-powered style analysis for repetitive words and phrases
+- Action suggestions that match player writing style
 - Persistent action suggestions between sessions
 
 ### World Tracking
-- Character relationships and dispositions
-- Location visits and changes
-- Inventory management
-- Quest/story beat progression
+- Character relationships and dispositions with portrait support
+- Location visits and changes with automatic discovery
+- Inventory management with equipment tracking
+- Quest/story beat progression (milestones, revelations, plot points)
+- In-story time tracking (years, days, hours, minutes)
+- Collapsible UI cards for all world elements
 
 ### Templates
-- Built-in genre templates (fantasy, sci-fi, mystery, etc.)
+- Built-in genre templates (fantasy, sci-fi, mystery, horror, slice of life)
 - Custom template creation with system prompts
-- Initial state configuration (characters, locations, items)
+- Initial state configuration (protagonist, locations, items)
+- Opening scene text support
+
+### Image Generation
+- Embedded image generation in story entries
+- AI-powered imageable scene detection
+- NanoGPT provider integration
+- Character portrait support for visual consistency
+- Configurable image size (512x512 or 1024x1024)
+
+### Save and Restore
+- Named checkpoints with full state snapshots
+- Retry system for undoing actions and generating alternatives
+- Character and time state preservation on retry
+
+### Network Sync
+- Local network sync between devices
+- QR code connection for easy pairing
+- Push/pull stories between devices
+- Server mode for sharing stories
+
+### UI Customization
+- Multiple themes (dark, light, light solarized, retro console)
+- Custom font selection (system or Google fonts)
+- Adjustable text size (small, medium, large)
+- Word count display toggle
 
 ### Cross-Platform
 - Desktop (Windows, macOS, Linux)
