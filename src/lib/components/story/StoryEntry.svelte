@@ -2,13 +2,19 @@
   import type { StoryEntry, EmbeddedImage } from '$lib/types';
   import { story } from '$lib/stores/story.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { User, BookOpen, Info, Pencil, Trash2, Check, X, RefreshCw, RotateCcw, ImageIcon, Loader2, AlertCircle, GitBranch, Bookmark } from 'lucide-svelte';
+  import { settings } from '$lib/stores/settings.svelte';
+  import { User, BookOpen, Info, Pencil, Trash2, Check, X, RefreshCw, RotateCcw, Loader2, GitBranch, Bookmark, Volume2 } from 'lucide-svelte';
   import { parseMarkdown } from '$lib/utils/markdown';
   import { database } from '$lib/services/database';
-  import { eventBus, type ImageReadyEvent } from '$lib/services/events';
+  import { eventBus, type ImageReadyEvent, type TTSQueuedEvent } from '$lib/services/events';
   import { onMount } from 'svelte';
 
   let { entry }: { entry: StoryEntry } = $props();
+
+  // TTS generation state
+  let isGeneratingTTS = $state(false);
+  let isPlayingTTS = $state(false);
+  let currentAudioElement: HTMLAudioElement | null = null;
 
   // Check if this entry is an error entry (either tracked or detected by content)
   const isErrorEntry = $derived(
@@ -324,22 +330,33 @@
     expandedImageId ? embeddedImages.find(img => img.id === expandedImageId) : null
   );
 
-  // Load images when entry changes
-  $effect(() => {
-    if (entry.type === 'narration') {
-      loadEmbeddedImages();
-    }
-  });
-
-  // Subscribe to ImageReady events
+  // Subscribe to ImageReady and TTS events
   onMount(() => {
-    const unsubscribe = eventBus.subscribe<ImageReadyEvent>('ImageReady', (event) => {
+    // Subscribe to ImageReady events to reload images when one completes
+    const unsubImageReady = eventBus.subscribe<ImageReadyEvent>('ImageReady', (event) => {
       if (event.entryId === entry.id) {
-        // Reload images when one completes for this entry
         loadEmbeddedImages();
       }
     });
-    return unsubscribe;
+
+    // Subscribe to TTSQueued events to auto-play TTS when triggered from ActionInput
+    const unsubTTSQueued = eventBus.subscribe<TTSQueuedEvent>('TTSQueued', (event) => {
+      if (event.entryId === entry.id && entry.type === 'narration') {
+        console.log('[StoryEntry] Received TTSQueued event, triggering auto-play', { entryId: entry.id });
+        handleTTSToggle();
+        loadEmbeddedImages();
+      }
+    });
+
+    // Load images on mount if this is a narration entry
+    if (entry.type === 'narration') {
+      loadEmbeddedImages();
+    }
+
+    return () => {
+      unsubImageReady();
+      unsubTTSQueued();
+    };
   });
 
   const icons = {
@@ -404,6 +421,88 @@
     return lastUserAction.id === entry.id;
   }
 
+  /**
+   * Play TTS audio or stop if already playing.
+   */
+  async function handleTTSToggle() {
+    // If audio is playing, stop it
+    if (isPlayingTTS && currentAudioElement) {
+      currentAudioElement.pause();
+      isPlayingTTS = false;
+      return;
+    }
+
+    const ttsSettings = settings.systemServicesSettings.tts;
+
+    if (!ttsSettings.enabled) {
+      alert('TTS is not enabled. Please enable it in settings.');
+      return;
+    }
+
+    if (!ttsSettings.endpoint || !ttsSettings.apiKey) {
+      alert('TTS is not properly configured. Please set the endpoint and API key in settings.');
+      return;
+    }
+
+    isGeneratingTTS = true;
+
+    try {
+      // Stop any existing audio playback
+      if (currentAudioElement) {
+        currentAudioElement.pause();
+        currentAudioElement = null;
+        isPlayingTTS = false;
+      }
+
+      const response = await fetch(ttsSettings.endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ttsSettings.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: ttsSettings.model || 'tts-1',
+          input: entry.content,
+          voice: ttsSettings.voice || 'alloy',
+          speed: ttsSettings.speed || 1.0,
+          response_format: 'mp3',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `TTS generation failed: ${response.statusText}`);
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // Create and play audio
+      currentAudioElement = new Audio(audioUrl);
+      currentAudioElement.play();
+      isPlayingTTS = true;
+
+      // Handle audio end
+      currentAudioElement.addEventListener('ended', () => {
+        URL.revokeObjectURL(audioUrl);
+        currentAudioElement = null;
+        isPlayingTTS = false;
+      });
+
+      // Handle pause
+      currentAudioElement.addEventListener('pause', () => {
+        if (!currentAudioElement?.ended) {
+          isPlayingTTS = false;
+        }
+      });
+    } catch (error) {
+      console.error('[StoryEntry] TTS generation failed:', error);
+      alert(error instanceof Error ? error.message : 'Failed to generate TTS');
+    } finally {
+      isGeneratingTTS = false;
+    }
+  }
+
   function cancelEdit() {
     isEditing = false;
     editContent = '';
@@ -444,6 +543,20 @@
             title="Edit entry"
           >
             <Pencil class="h-3.5 w-3.5" />
+          </button>
+          <button
+            onclick={handleTTSToggle}
+            disabled={isGeneratingTTS}
+            class="rounded p-1.5 text-surface-400 hover:bg-surface-600 hover:text-surface-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[32px] min-w-[32px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
+            title={isPlayingTTS ? 'Stop narration' : 'Narrate'}
+          >
+            {#if isGeneratingTTS}
+              <Loader2 class="h-3.5 w-3.5 animate-spin" />
+            {:else if isPlayingTTS}
+              <X class="h-3.5 w-3.5 text-red-400" />
+            {:else}
+              <Volume2 class="h-3.5 w-3.5" />
+            {/if}
           </button>
           <button
             onclick={() => isDeleting = true}

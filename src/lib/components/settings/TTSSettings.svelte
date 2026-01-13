@@ -1,0 +1,258 @@
+<script lang="ts">
+  import { settings } from '$lib/stores/settings.svelte';
+  import { Play, Square, RefreshCw } from 'lucide-svelte';
+
+  let isPlayingPreview = $state(false);
+  let previewError = $state<string | null>(null);
+  let currentAudio: HTMLAudioElement | null = null;
+
+  // Play preview of selected voice
+  async function playVoicePreview() {
+    if (!settings.systemServicesSettings.tts.enabled || isPlayingPreview) return;
+    if (!settings.systemServicesSettings.tts.endpoint || !settings.systemServicesSettings.tts.apiKey) {
+      previewError = 'Endpoint and API key are required';
+      return;
+    }
+
+    isPlayingPreview = true;
+    previewError = null;
+
+    try {
+      const previewText = 'This is a preview of the selected voice. The story narration will sound like this.';
+      const response = await fetch(settings.systemServicesSettings.tts.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.systemServicesSettings.tts.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: settings.systemServicesSettings.tts.model,
+          input: previewText,
+          voice: settings.systemServicesSettings.tts.voice,
+          speed: settings.systemServicesSettings.tts.speed,
+          response_format: 'mp3',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`API Error: ${response.status} - ${error}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio();
+      audio.src = url;
+      currentAudio = audio;
+      audio.play().catch((err) => {
+        previewError = 'Failed to play audio: ' + err.message;
+      });
+      
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        isPlayingPreview = false;
+        currentAudio = null;
+      };
+    } catch (error) {
+      console.error('[TTSSettings] Preview failed:', error);
+      previewError = error instanceof Error ? error.message : 'Preview failed';
+      isPlayingPreview = false;
+    }
+  }
+
+  // Stop preview playback
+  function stopPreview() {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio = null;
+    }
+    isPlayingPreview = false;
+  }
+
+  // Reset TTS settings to defaults
+  function resetSettings() {
+    settings.resetTTSSettings();
+    previewError = null;
+  }
+</script>
+
+<div class="space-y-4">
+  <!-- Enable TTS Toggle -->
+  <div class="border-b border-surface-700 pb-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-sm font-medium text-surface-200">Text-to-Speech Narration</h3>
+        <p class="text-xs text-surface-500">Generate audio narration of story events using TTS.</p>
+      </div>
+      <button
+        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+        class:bg-accent-600={settings.systemServicesSettings.tts.enabled}
+        class:bg-surface-600={!settings.systemServicesSettings.tts.enabled}
+        onclick={() => {
+          settings.systemServicesSettings.tts.enabled = !settings.systemServicesSettings.tts.enabled;
+          settings.saveSystemServicesSettings();
+        }}
+        aria-label="Toggle TTS"
+      >
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+          class:translate-x-6={settings.systemServicesSettings.tts.enabled}
+          class:translate-x-1={!settings.systemServicesSettings.tts.enabled}
+        ></span>
+      </button>
+    </div>
+  </div>
+
+  {#if settings.systemServicesSettings.tts.enabled}
+    <!-- API Endpoint (Required) -->
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-surface-300">
+        API Endpoint
+      </label>
+      <p class="text-xs text-surface-500">TTS API endpoint (e.g., https://api.openai.com/v1/audio/speech)</p>
+      <input
+        type="text"
+        class="input input-sm w-full bg-surface-800 border-surface-600 text-surface-100"
+        value={settings.systemServicesSettings.tts.endpoint}
+        oninput={(e) => {
+          settings.systemServicesSettings.tts.endpoint = e.currentTarget.value;
+          settings.saveSystemServicesSettings();
+        }}
+        placeholder="https://api.openai.com/v1/audio/speech"
+      />
+    </div>
+
+    <!-- API Key (Required) -->
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-surface-300">
+        API Key
+      </label>
+      <p class="text-xs text-surface-500">Your API key for the TTS endpoint</p>
+      <input
+        type="password"
+        class="input input-sm w-full bg-surface-800 border-surface-600 text-surface-100"
+        value={settings.systemServicesSettings.tts.apiKey}
+        oninput={(e) => {
+          settings.systemServicesSettings.tts.apiKey = e.currentTarget.value;
+          settings.saveSystemServicesSettings();
+        }}
+        placeholder="Enter your API key"
+      />
+    </div>
+
+    <!-- TTS Model -->
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-surface-300">
+        TTS Model
+      </label>
+      <p class="text-xs text-surface-500">Model to use for speech generation.</p>
+      <input
+        type="text"
+        class="input input-sm w-full bg-surface-800 border-surface-600 text-surface-100"
+        value={settings.systemServicesSettings.tts.model}
+        oninput={(e) => {
+          settings.systemServicesSettings.tts.model = e.currentTarget.value;
+          settings.saveSystemServicesSettings();
+        }}
+        placeholder="tts-1"
+      />
+    </div>
+
+    <!-- Voice (Text Input) -->
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-surface-300">
+        Voice
+      </label>
+      <p class="text-xs text-surface-500">Voice ID for narration (e.g., alloy, nova, onyx)</p>
+      <input
+        type="text"
+        class="input input-sm w-full bg-surface-800 border-surface-600 text-surface-100"
+        value={settings.systemServicesSettings.tts.voice}
+        oninput={(e) => {
+          settings.systemServicesSettings.tts.voice = e.currentTarget.value;
+          settings.saveSystemServicesSettings();
+        }}
+        placeholder="alloy"
+      />
+    </div>
+
+    <!-- Voice Preview -->
+    <div class="border-t border-surface-700 pt-4">
+      <div class="flex gap-2">
+        <button
+          class="btn btn-primary btn-sm flex-1 gap-1 flex justify-center items-center"
+          onclick={isPlayingPreview ? stopPreview : playVoicePreview}
+        >
+          {#if isPlayingPreview}
+            <Square class="h-4 w-4" />
+            <span>Stop</span>
+          {:else}
+            <Play class="h-4 w-4" />
+            <span>Preview Voice</span>
+          {/if}
+        </button>
+      </div>
+      {#if previewError}
+        <p class="text-xs text-error mt-2">{previewError}</p>
+      {/if}
+    </div>
+
+    <!-- Speech Speed -->
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-surface-300">
+        Speech Speed: <span class="text-accent-400">{settings.systemServicesSettings.tts.speed.toFixed(2)}x</span>
+      </label>
+      <p class="text-xs text-surface-500">Adjust the speed of speech generation (0.25-4.0).</p>
+      <input
+        type="range"
+        min="0.25"
+        max="4"
+        step="0.05"
+        class="range range-xs range-accent w-full"
+        value={settings.systemServicesSettings.tts.speed}
+        oninput={(e) => {
+          settings.systemServicesSettings.tts.speed = parseFloat(e.currentTarget.value);
+          settings.saveSystemServicesSettings();
+        }}
+      />
+    </div>
+
+    <!-- Auto-Play Toggle -->
+    <div class="border-t border-surface-700 pt-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-medium text-surface-200">Auto-Play Narration</h3>
+          <p class="text-xs text-surface-500">Automatically play TTS audio when story is narrated.</p>
+        </div>
+        <button
+          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+          class:bg-accent-600={settings.systemServicesSettings.tts.autoPlay}
+          class:bg-surface-600={!settings.systemServicesSettings.tts.autoPlay}
+          onclick={() => {
+            settings.systemServicesSettings.tts.autoPlay = !settings.systemServicesSettings.tts.autoPlay;
+            settings.saveSystemServicesSettings();
+          }}
+          aria-label="Toggle auto-play"
+        >
+          <span
+            class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+            class:translate-x-6={settings.systemServicesSettings.tts.autoPlay}
+            class:translate-x-1={!settings.systemServicesSettings.tts.autoPlay}
+          ></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Reset Button -->
+    <div class="border-t border-surface-700 pt-4 mt-4">
+      <button
+        class="btn btn-secondary text-xs"
+        onclick={resetSettings}
+      >
+        <RefreshCw class="h-3 w-3 mr-1" />
+        Reset to Defaults
+      </button>
+    </div>
+  {/if}
+</div>

@@ -13,7 +13,7 @@
   } from '$lib/services/ai/scenario';
   import { serializeManualBody } from '$lib/services/ai/requestOverrides';
   import type { ReasoningEffort } from '$lib/types';
-  import { X, Key, Cpu, Palette, RefreshCw, Search, Settings2, RotateCcw, ChevronDown, ChevronUp, Brain, BookOpen, Lightbulb, Sparkles, Clock, Download, Loader2, Save, FolderOpen, ListChecks, Scroll, Image, HelpCircle } from 'lucide-svelte';
+  import { X, Key, Cpu, Palette, RefreshCw, Search, Settings2, RotateCcw, ChevronDown, ChevronUp, Brain, BookOpen, Lightbulb, Sparkles, Clock, Download, Loader2, Save, FolderOpen, ListChecks, Scroll, Image, HelpCircle, Volume2 } from 'lucide-svelte';
   import { promptService, type PromptTemplate, type MacroOverride, type Macro, type SimpleMacro, type ComplexMacro } from '$lib/services/prompts';
   import PromptEditor from '../prompts/PromptEditor.svelte';
   import MacroChip from '../prompts/MacroChip.svelte';
@@ -24,10 +24,11 @@
   import ModelSelector from './ModelSelector.svelte';
   import ProviderOnlySelector from './ProviderOnlySelector.svelte';
   import FontSelector from './FontSelector.svelte';
+  import TTSSettings from './TTSSettings.svelte';
   import type { APIProfile } from '$lib/types';
   import { updaterService, type UpdateInfo, type UpdateProgress } from '$lib/services/updater';
 
-  let activeTab = $state<'api' | 'generation' | 'ui' | 'prompts' | 'images' | 'advanced'>('api');
+  let activeTab = $state<'api' | 'generation' | 'ui' | 'prompts' | 'images' | 'tts' | 'advanced'>('api');
 
   // Advanced settings section state
   let showWizardSection = $state(false);
@@ -695,6 +696,17 @@
         <Image class="h-4 w-4" />
         <span class="hidden xs:inline">Images</span>
         <span class="xs:hidden">Img</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 sm:gap-2 rounded-lg px-3 sm:px-4 py-2 text-sm min-h-[40px] flex-shrink-0"
+        class:bg-surface-700={activeTab === 'tts'}
+        class:text-surface-100={activeTab === 'tts'}
+        class:text-surface-400={activeTab !== 'tts'}
+        onclick={() => activeTab = 'tts'}
+      >
+        <Volume2 class="h-4 w-4" />
+        <span class="hidden xs:inline">TTS</span>
+        <span class="xs:hidden">TTS</span>
       </button>
       <button
         class="flex items-center gap-1.5 sm:gap-2 rounded-lg px-3 sm:px-4 py-2 text-sm min-h-[40px] flex-shrink-0"
@@ -1585,6 +1597,8 @@
             </div>
           {/if}
         </div>
+      {:else if activeTab === 'tts'}
+        <TTSSettings />
       {:else if activeTab === 'advanced'}
         <div class="space-y-4">
           <div class="border-b border-surface-700 pb-3">

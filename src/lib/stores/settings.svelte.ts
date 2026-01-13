@@ -958,6 +958,41 @@ export function getDefaultImageGenerationSettingsForProvider(provider: ProviderP
   };
 }
 
+// Text-To-Speech settings (TTS narration audio generation)
+export interface TTSServiceSettings {
+  enabled: boolean;               // Toggle for TTS (default: false)
+  endpoint: string;               // TTS API endpoint (required, e.g., https://api.openai.com/v1/audio/speech)
+  apiKey: string;                 // API key for TTS endpoint (required)
+  model: string;                  // TTS model (default: 'tts-1')
+  voice: string;                  // Voice ID (default: 'alloy')
+  speed: number;                  // Speech speed 0.25-4.0 (default: 1.0)
+  autoPlay: boolean;              // Auto-play narration TTS (default: false)
+}
+
+export function getDefaultTTSSettings(): TTSServiceSettings {
+  return {
+    enabled: false,
+    endpoint: '',
+    apiKey: '',
+    model: 'tts-1',
+    voice: 'alloy',
+    speed: 1.0,
+    autoPlay: false,
+  };
+}
+
+export function getDefaultTTSSettingsForProvider(provider: ProviderPreset): TTSServiceSettings {
+  return {
+    enabled: false,
+    endpoint: '',
+    apiKey: '',
+    model: 'tts-1',
+    voice: 'alloy',
+    speed: 1.0,
+    autoPlay: false,
+  };
+}
+
 // Character Card Import settings (SillyTavern card conversion)
 export interface CharacterCardImportSettings {
   profileId: string | null;  // API profile to use (null = use main narrative profile)
@@ -1008,6 +1043,7 @@ export interface SystemServicesSettings {
   chapterQuery: ChapterQuerySettings;
   entryRetrieval: EntryRetrievalSettings;
   imageGeneration: ImageGenerationServiceSettings;
+  tts: TTSServiceSettings;
   characterCardImport: CharacterCardImportSettings;
 }
 
@@ -1025,6 +1061,7 @@ export function getDefaultSystemServicesSettings(): SystemServicesSettings {
     chapterQuery: getDefaultChapterQuerySettings(),
     entryRetrieval: getDefaultEntryRetrievalSettings(),
     imageGeneration: getDefaultImageGenerationSettings(),
+    tts: getDefaultTTSSettings(),
     characterCardImport: getDefaultCharacterCardImportSettings(),
   };
 }
@@ -1043,6 +1080,7 @@ export function getDefaultSystemServicesSettingsForProvider(provider: ProviderPr
     chapterQuery: getDefaultChapterQuerySettingsForProvider(provider),
     entryRetrieval: getDefaultEntryRetrievalSettingsForProvider(provider),
     imageGeneration: getDefaultImageGenerationSettingsForProvider(provider),
+    tts: getDefaultTTSSettingsForProvider(provider),
     characterCardImport: getDefaultCharacterCardImportSettingsForProvider(provider),
   };
 }
@@ -1301,6 +1339,7 @@ class SettingsStore {
             chapterQuery: { ...defaults.chapterQuery, ...loaded.chapterQuery },
             entryRetrieval: { ...defaults.entryRetrieval, ...loaded.entryRetrieval },
             imageGeneration: { ...defaults.imageGeneration, ...loaded.imageGeneration },
+            tts: { ...defaults.tts, ...loaded.tts },
             characterCardImport: { ...defaults.characterCardImport, ...loaded.characterCardImport },
           };
 
@@ -2096,6 +2135,11 @@ class SettingsStore {
 
   async resetImageGenerationSettings() {
     this.systemServicesSettings.imageGeneration = getDefaultImageGenerationSettingsForProvider(this.getEffectiveProvider());
+    await this.saveSystemServicesSettings();
+  }
+
+  async resetTTSSettings() {
+    this.systemServicesSettings.tts = getDefaultTTSSettingsForProvider(this.getEffectiveProvider());
     await this.saveSystemServicesSettings();
   }
 

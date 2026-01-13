@@ -29,6 +29,7 @@ export type EventType =
   | 'ImageAnalysisComplete'  // Finished analyzing narrative for imageable scenes
   | 'ImageQueued'            // Image generation requested
   | 'ImageReady'             // Image generation complete
+  | 'TTSQueued'              // TTS generation requested for entry
   | 'SaveComplete'           // Autosave finished
   | 'CheckpointCreated'      // Checkpoint saved
   | 'CheckpointRestored'     // Checkpoint restored
@@ -150,6 +151,12 @@ export interface ImageReadyEvent {
   imageId: string;
   entryId: string;
   success: boolean;
+}
+
+export interface TTSQueuedEvent {
+  type: 'TTSQueued';
+  entryId: string;
+  content: string;
 }
 
 export interface GenericEvent {
@@ -336,4 +343,8 @@ export function emitImageQueued(imageId: string, entryId: string): void {
 
 export function emitImageReady(imageId: string, entryId: string, success: boolean): void {
   eventBus.emit<ImageReadyEvent>({ type: 'ImageReady', imageId, entryId, success });
+}
+
+export function emitTTSQueued(entryId: string, content: string): void {
+  eventBus.emit<TTSQueuedEvent>({ type: 'TTSQueued', entryId, content });
 }
