@@ -1946,6 +1946,7 @@ Note: First character in the array is the primary character.
 **SINGLE character (has portrait):**
 - Use "The character" or "A [gender]" - reference image provides appearance
 - Action/pose, expression
+- **Dynamic camera angle** - vary the POV to enhance the scene (see Camera Angles below)
 - Setting, lighting, atmosphere
 - 2-3 style keywords
 
@@ -1953,6 +1954,7 @@ Note: First character in the array is the primary character.
 - Describe each by KEY visual traits only (hair color/style, one distinctive feature)
 - Spatial arrangement (left/right, foreground/background, facing each other)
 - Actions/poses
+- **Dynamic camera angle** - choose POV that best captures the interaction
 - Brief setting
 - 2-3 style keywords
 
@@ -1962,12 +1964,25 @@ Note: First character in the array is the primary character.
 - Relaxed standing pose, facing viewer
 - **Plain solid color or simple gradient background ONLY** - no objects, no environment, no scenery
 - 2-3 style keywords
+- (Portraits always use standard front-facing view)
+
+## Camera Angles (vary these to create dynamic images)
+- **Low angle** (looking up) - makes characters imposing, heroic, powerful
+- **High angle** (looking down) - vulnerability, overview of scene, contemplation
+- **Dutch angle** (tilted) - tension, unease, action moments
+- **Over-the-shoulder** - conversation scenes, following action
+- **Close-up** - emotional intensity, important reactions
+- **Wide shot** - establishing location, showing scale, group dynamics
+- **Worm's eye view** - extreme drama, towering presence
+- **Bird's eye view** - tactical scenes, showing spatial relationships
+
+Match the angle to the emotional tone: action scenes benefit from low/dutch angles, tense conversations from close-ups, epic moments from wide shots.
 
 ## Examples
 
 **Single character:**
 {
-  "prompt": "The character in defensive stance, gripping glowing sword. Rain-soaked alley, neon reflections, dramatic backlighting. Anime style, cinematic.",
+  "prompt": "Low angle shot, the character in defensive stance gripping glowing sword. Rain-soaked alley, neon reflections, dramatic backlighting. Anime style, cinematic.",
   "sourceText": "gripped her sword tightly",
   "sceneType": "action",
   "priority": 8,
@@ -1977,7 +1992,7 @@ Note: First character in the array is the primary character.
 
 **Two characters:**
 {
-  "prompt": "Woman with silver hair and man with brown hair stand back-to-back, weapons drawn. Ruined temple at sunset, golden light through columns. Anime style, dynamic.",
+  "prompt": "Wide shot, woman with silver hair and man with brown hair stand back-to-back, weapons drawn. Ruined temple at sunset, golden light through columns. Anime style, dynamic.",
   "sourceText": "they stood ready to face the horde together",
   "sceneType": "action",
   "priority": 9,
@@ -1987,7 +2002,7 @@ Note: First character in the array is the primary character.
 
 **Three characters:**
 {
-  "prompt": "Red-haired woman laughing, grey-bearded man with crossed arms, black-haired boy grinning between them. Tavern interior, warm firelight. Soft anime, warm colors.",
+  "prompt": "Medium shot, red-haired woman laughing, grey-bearded man with crossed arms, black-haired boy grinning between them. Cozy tavern interior, warm firelight. Soft anime, warm colors.",
   "sourceText": "the unlikely trio shared a rare moment of levity",
   "sceneType": "character",
   "priority": 7,
