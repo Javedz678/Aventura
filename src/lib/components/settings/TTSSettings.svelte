@@ -249,7 +249,7 @@
       <label class="text-sm font-medium text-surface-300">
         Excluded Characters
       </label>
-      <p class="text-xs text-surface-500">Characters excluded from TTS narration (Comma-separated)</p>
+      <p class="text-xs text-surface-500">Characters excluded from TTS narration (comma-separated)</p>
       <input
         type="text"
         class="input input-sm w-full bg-surface-800 border-surface-600 text-surface-100"
@@ -266,7 +266,7 @@
     <div class="flex items-center justify-between space-y-2 mt-4">
       <div>
         <h3 class="text-sm font-medium text-surface-200">Remove HTML tags</h3>
-        <p class="text-xs text-surface-500">Strip HTML tags from narrated text before sending to TTS. Always removes content of &lt;style&gt; tags as well.</p>
+        <p class="text-xs text-surface-500">Remove HTML tags from narrated text before sending to TTS. Always removes content of &lt;style&gt; tags as well.</p>
       </div>
       <button
         class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
@@ -288,7 +288,7 @@
 
     {#if settings.systemServicesSettings.tts.removeHtmlTags}
 
-      <!-- HTML tags to strip content (Text Input) -->
+      <!-- HTML tags to remove content from (Text Input) -->
       <div class="space-y-2">
         <label class="text-sm font-medium text-surface-300">
           HTML tags to remove content from
@@ -304,6 +304,7 @@
           }}
           placeholder="Comma-separated HTML tags (e.g., div, span, font)"
           disabled={settings.systemServicesSettings.tts.removeAllHtmlContent}
+          class:text-surface-600={settings.systemServicesSettings.tts.removeAllHtmlContent}
         />
       </div>
 
@@ -311,7 +312,7 @@
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-surface-200">Remove all tag content</h3>
-            <p class="text-xs text-surface-500">Drops text inside any HTML tag before narration.</p>
+            <p class="text-xs text-surface-500">Removes content inside any HTML tag before narration.</p>
           </div>
           <button
             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
