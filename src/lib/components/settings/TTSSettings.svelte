@@ -307,7 +307,7 @@
         />
       </div>
 
-      <div class="mt-3 space-y-3">
+      <div class="space-y-2">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-surface-200">Remove all tag content</h3>
@@ -336,7 +336,7 @@
     <!-- Reset Button -->
     <div class="border-t border-surface-700 pt-4 mt-4">
       <button
-        class="btn btn-secondary text-xs"
+        class="btn btn-secondary text-xs flex items-center gap-1"
         onclick={resetSettings}
       >
         <RefreshCw class="h-3 w-3 mr-1" />
