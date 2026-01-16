@@ -684,6 +684,41 @@ export function getDefaultLoreManagementSettingsForProvider(provider: ProviderPr
   };
 }
 
+// Interactive Lorebook service settings (AI-assisted lorebook creation in vault)
+// Note: System prompt is managed via the Prompts tab (template id: 'interactive-lorebook')
+export interface InteractiveLorebookSettings {
+  profileId: string | null;  // API profile to use (null = use main narrative profile)
+  model: string;
+  temperature: number;
+  reasoningEffort: ReasoningEffort;
+  providerOnly: string[];
+  manualBody: string;
+}
+
+export function getDefaultInteractiveLorebookSettings(): InteractiveLorebookSettings {
+  return {
+    profileId: null, // Use main narrative profile by default
+    model: 'z-ai/glm-4.7',
+    temperature: 0.7,
+    reasoningEffort: 'high',
+    providerOnly: [],
+    manualBody: '',
+  };
+}
+
+export function getDefaultInteractiveLorebookSettingsForProvider(provider: ProviderPreset): InteractiveLorebookSettings {
+  // NanoGPT uses different model name
+  const model = provider === 'nanogpt' ? 'zai-org/glm-4.7' : 'z-ai/glm-4.7';
+  return {
+    profileId: null,
+    model,
+    temperature: 0.7,
+    reasoningEffort: 'high',
+    providerOnly: [],
+    manualBody: '',
+  };
+}
+
 // Agentic Retrieval service settings (per design doc section 3.1.4)
 export interface AgenticRetrievalSettings {
   profileId: string | null;  // API profile to use (null = use default profile)
@@ -1058,6 +1093,7 @@ export interface SystemServicesSettings {
   actionChoices: ActionChoicesSettings;
   styleReviewer: StyleReviewerSettings;
   loreManagement: LoreManagementSettings;
+  interactiveLorebook: InteractiveLorebookSettings;
   agenticRetrieval: AgenticRetrievalSettings;
   timelineFill: TimelineFillSettings;
   chapterQuery: ChapterQuerySettings;
@@ -1076,6 +1112,7 @@ export function getDefaultSystemServicesSettings(): SystemServicesSettings {
     actionChoices: getDefaultActionChoicesSettings(),
     styleReviewer: getDefaultStyleReviewerSettings(),
     loreManagement: getDefaultLoreManagementSettings(),
+    interactiveLorebook: getDefaultInteractiveLorebookSettings(),
     agenticRetrieval: getDefaultAgenticRetrievalSettings(),
     timelineFill: getDefaultTimelineFillSettings(),
     chapterQuery: getDefaultChapterQuerySettings(),
@@ -1095,6 +1132,7 @@ export function getDefaultSystemServicesSettingsForProvider(provider: ProviderPr
     actionChoices: getDefaultActionChoicesSettingsForProvider(provider),
     styleReviewer: getDefaultStyleReviewerSettingsForProvider(provider),
     loreManagement: getDefaultLoreManagementSettingsForProvider(provider),
+    interactiveLorebook: getDefaultInteractiveLorebookSettingsForProvider(provider),
     agenticRetrieval: getDefaultAgenticRetrievalSettingsForProvider(provider),
     timelineFill: getDefaultTimelineFillSettingsForProvider(provider),
     chapterQuery: getDefaultChapterQuerySettingsForProvider(provider),
@@ -1361,6 +1399,7 @@ class SettingsStore {
             imageGeneration: { ...defaults.imageGeneration, ...loaded.imageGeneration },
             tts: { ...defaults.tts, ...loaded.tts },
             characterCardImport: { ...defaults.characterCardImport, ...loaded.characterCardImport },
+            interactiveLorebook: { ...defaults.interactiveLorebook, ...loaded.interactiveLorebook },
           };
 
           const isMissingProfileId = (profileId: string | null | undefined): boolean => {
@@ -2130,6 +2169,11 @@ class SettingsStore {
 
   async resetLoreManagementSettings() {
     this.systemServicesSettings.loreManagement = getDefaultLoreManagementSettingsForProvider(this.getEffectiveProvider());
+    await this.saveSystemServicesSettings();
+  }
+
+  async resetInteractiveLorebookSettings() {
+    this.systemServicesSettings.interactiveLorebook = getDefaultInteractiveLorebookSettingsForProvider(this.getEffectiveProvider());
     await this.saveSystemServicesSettings();
   }
 

@@ -214,6 +214,33 @@
   function openEditLorebook(lorebook: VaultLorebook) {
     editingLorebook = lorebook;
   }
+
+  async function handleCreateLorebook() {
+    // Create a new empty lorebook and open it for editing
+    const newLorebook = await lorebookVault.add({
+      name: '',
+      description: null,
+      entries: [],
+      tags: [],
+      favorite: false,
+      source: 'manual',
+      originalFilename: null,
+      originalStoryId: null,
+      metadata: {
+        format: 'aventura',
+        totalEntries: 0,
+        entryBreakdown: {
+          character: 0,
+          location: 0,
+          item: 0,
+          faction: 0,
+          concept: 0,
+          event: 0,
+        },
+      },
+    });
+    editingLorebook = newLorebook;
+  }
 </script>
 
 <div class="flex h-full flex-col bg-surface-900">
@@ -277,6 +304,13 @@
               disabled={importingLorebook}
             />
           </label>
+          <button
+            class="flex items-center gap-2 rounded-lg bg-accent-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-600"
+            onclick={handleCreateLorebook}
+          >
+            <Plus class="h-4 w-4" />
+            <span class="hidden sm:inline">New Lorebook</span>
+          </button>
         {/if}
       </div>
     </div>
@@ -463,8 +497,19 @@
               {/if}
             </p>
             <p class="mt-1 text-sm text-surface-500">
-              Save processed lorebooks from the Setup Wizard or your stories
+              Create a new lorebook or import one from a file
             </p>
+            {#if !searchQuery && !showFavoritesOnly}
+              <div class="mt-4">
+                <button
+                  class="flex items-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 mx-auto"
+                  onclick={handleCreateLorebook}
+                >
+                  <Plus class="h-4 w-4" />
+                  Create Lorebook
+                </button>
+              </div>
+            {/if}
           </div>
         </div>
       {:else}

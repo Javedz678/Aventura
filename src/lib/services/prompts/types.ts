@@ -99,7 +99,7 @@ export interface ContextPlaceholder {
   /** Description of what this placeholder contains */
   description: string;
   /** Category for grouping in UI */
-  category: 'story' | 'entities' | 'memory' | 'wizard' | 'other';
+  category: 'story' | 'entities' | 'memory' | 'wizard' | 'service' | 'other';
 }
 
 /**

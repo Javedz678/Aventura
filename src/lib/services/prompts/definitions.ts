@@ -709,6 +709,10 @@ export const CONTEXT_PLACEHOLDERS: ContextPlaceholder[] = [
   { id: 'visual-descriptors', name: 'Visual Descriptors', token: 'visualDescriptors', category: 'other', description: 'Comma-separated visual appearance details for a single character (hair, eyes, clothing, etc.)' },
   { id: 'chat-history', name: 'Chat History', token: 'chatHistory', category: 'story', description: 'Full untruncated chat history for comprehensive context' },
   { id: 'lorebook-context', name: 'Lorebook Context', token: 'lorebookContext', category: 'story', description: 'Activated lorebook entries for world and character context' },
+
+  // Interactive Lorebook service
+  { id: 'lorebook-name', name: 'Lorebook Name', token: 'lorebookName', category: 'service', description: 'Name of the lorebook being edited' },
+  { id: 'entry-count', name: 'Entry Count', token: 'entryCount', category: 'service', description: 'Number of entries in the lorebook' },
 ];
 
 /**
@@ -1460,6 +1464,33 @@ Please review the story content and identify:
 Use the available tools to make necessary changes, then call finish_lore_management when done.`,
 };
 
+const interactiveLorebookPromptTemplate: PromptTemplate = {
+  id: 'interactive-lorebook',
+  name: 'Interactive Lorebook',
+  category: 'service',
+  description: 'AI-assisted lorebook creation and organization in the vault',
+  content: `You are an assistant helping create and organize a lorebook for interactive fiction.
+
+Your role is to help the user build comprehensive lore entries for characters, locations, items, factions, concepts, and events.
+
+Guidelines:
+- Ask clarifying questions to understand what the user wants to create
+- Suggest appropriate entry types based on the content
+- Help fill in keywords for better triggering in stories
+- Offer to create related entries when appropriate
+- Use descriptive, engaging prose for descriptions
+- Consider relationships between entries
+- Keep descriptions focused and useful for story generation
+
+When the user describes something to add, use the create_entry tool to propose new entries.
+When updating existing entries, explain what you plan to change.
+
+Your tools let you view, create, update, delete, and merge lorebook entries. All modifications require user approval before being applied.
+
+Current lorebook: {{lorebookName}}
+Total entries: {{entryCount}}`,
+};
+
 const agenticRetrievalPromptTemplate: PromptTemplate = {
   id: 'agentic-retrieval',
   name: 'Agentic Retrieval',
@@ -2173,6 +2204,7 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
   timelineFillAnswerPromptTemplate,
   lorebookClassifierPromptTemplate,
   loreManagementPromptTemplate,
+  interactiveLorebookPromptTemplate,
   agenticRetrievalPromptTemplate,
   characterCardImportPromptTemplate,
   imagePromptAnalysisTemplate,

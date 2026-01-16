@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ui } from '$lib/stores/ui.svelte';
   import { onMount } from 'svelte';
-  import { settings } from '$lib/stores/settings.svelte';
+  import { settings, getDefaultInteractiveLorebookSettings } from '$lib/stores/settings.svelte';
   import { OpenAIProvider, OPENROUTER_API_URL } from '$lib/services/ai/openrouter';
   import type { ProviderInfo } from '$lib/services/ai/types';
   import { DEFAULT_PROVIDERS } from '$lib/services/ai/providers';
@@ -13,7 +13,7 @@
   } from '$lib/services/ai/scenario';
   import { serializeManualBody } from '$lib/services/ai/requestOverrides';
   import type { ReasoningEffort } from '$lib/types';
-  import { X, Key, Cpu, Palette, RefreshCw, Search, Settings2, RotateCcw, ChevronDown, ChevronUp, Brain, BookOpen, Lightbulb, Sparkles, Clock, Download, Loader2, Save, FolderOpen, ListChecks, Scroll, Image, HelpCircle, Volume2 } from 'lucide-svelte';
+  import { X, Key, Cpu, Palette, RefreshCw, Search, Settings2, RotateCcw, ChevronDown, ChevronUp, Brain, BookOpen, Lightbulb, Sparkles, Clock, Download, Loader2, Save, FolderOpen, ListChecks, Scroll, Image, HelpCircle, Volume2, Bot } from 'lucide-svelte';
   import { promptService, type PromptTemplate, type MacroOverride, type Macro, type SimpleMacro, type ComplexMacro } from '$lib/services/prompts';
   import PromptEditor from '../prompts/PromptEditor.svelte';
   import MacroChip from '../prompts/MacroChip.svelte';
@@ -39,6 +39,7 @@
   let showStyleReviewerSection = $state(false);
   let showEntryRetrievalSection = $state(false);
   let showLoreManagementSection = $state(false);
+  let showInteractiveLorebookSection = $state(false);
   let showTimelineFillSection = $state(false);
   let showChapterQuerySection = $state(false);
   let showSceneAnalysisSection = $state(false);
@@ -3458,6 +3459,176 @@
                       </div>
                       <textarea
                         bind:value={settings.systemServicesSettings.loreManagement.manualBody}
+                        onblur={() => settings.saveSystemServicesSettings()}
+                        class="input text-xs min-h-[140px] resize-y font-mono w-full"
+                        rows="6"
+                      ></textarea>
+                      <p class="text-xs text-surface-500 mt-1">
+                        Overrides request parameters; messages and tools are managed by Aventura.
+                      </p>
+                    </div>
+                  {/if}
+
+                </div>
+              </div>
+            {/if}
+          </div>
+
+          <!-- Interactive Lorebook Section -->
+          <div class="border-t border-surface-700 pt-3">
+            <div class="flex items-center justify-between">
+              <button
+                class="flex items-center gap-2 text-left flex-1"
+                onclick={() => showInteractiveLorebookSection = !showInteractiveLorebookSection}
+              >
+                <Bot class="h-4 w-4 text-purple-400" />
+                <div>
+                  <h3 class="text-sm font-medium text-surface-200">Interactive Lorebook</h3>
+                  <p class="text-xs text-surface-500">AI-assisted lorebook creation in vault</p>
+                </div>
+              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  class="text-xs text-accent-400 hover:text-accent-300 flex items-center gap-1"
+                  onclick={() => settings.resetInteractiveLorebookSettings()}
+                >
+                  <RotateCcw class="h-3 w-3" />
+                  Reset
+                </button>
+                <button onclick={() => showInteractiveLorebookSection = !showInteractiveLorebookSection}>
+                  {#if showInteractiveLorebookSection}
+                    <ChevronUp class="h-4 w-4 text-surface-400" />
+                  {:else}
+                    <ChevronDown class="h-4 w-4 text-surface-400" />
+                  {/if}
+                </button>
+              </div>
+            </div>
+
+            {#if showInteractiveLorebookSection}
+              {@const ils = settings.systemServicesSettings.interactiveLorebook ?? getDefaultInteractiveLorebookSettings()}
+              <div class="mt-3 space-y-3">
+                <div class="card bg-surface-900 p-3">
+                  <p class="text-xs text-surface-400 mb-3">
+                    AI assistant for creating and organizing lorebook entries in the vault.
+                  </p>
+
+                  <!-- Profile and Model Selector -->
+                  <div class="mb-3">
+                    <ModelSelector
+                      profileId={ils.profileId}
+                      model={ils.model}
+                      onProfileChange={(id) => {
+                        if (!settings.systemServicesSettings.interactiveLorebook) {
+                          settings.systemServicesSettings.interactiveLorebook = getDefaultInteractiveLorebookSettings();
+                        }
+                        settings.systemServicesSettings.interactiveLorebook.profileId = id;
+                        settings.saveSystemServicesSettings();
+                      }}
+                      onModelChange={(m) => {
+                        if (!settings.systemServicesSettings.interactiveLorebook) {
+                          settings.systemServicesSettings.interactiveLorebook = getDefaultInteractiveLorebookSettings();
+                        }
+                        settings.systemServicesSettings.interactiveLorebook.model = m;
+                        settings.saveSystemServicesSettings();
+                      }}
+                      onManageProfiles={() => { showProfileModal = true; editingProfile = null; }}
+                    />
+                  </div>
+
+                  <!-- Temperature -->
+                  <div class="mb-3" class:opacity-50={settings.advancedRequestSettings.manualMode}>
+                    <label class="mb-1 block text-xs font-medium text-surface-400">
+                      Temperature: {ils.temperature.toFixed(2)}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={ils.temperature}
+                      onchange={(e) => {
+                        if (!settings.systemServicesSettings.interactiveLorebook) {
+                          settings.systemServicesSettings.interactiveLorebook = getDefaultInteractiveLorebookSettings();
+                        }
+                        settings.systemServicesSettings.interactiveLorebook.temperature = parseFloat(e.currentTarget.value);
+                        settings.saveSystemServicesSettings();
+                      }}
+                      disabled={settings.advancedRequestSettings.manualMode}
+                      class="w-full h-2"
+                    />
+                  </div>
+
+                  <!-- Thinking -->
+                  <div class="mb-3" class:opacity-50={settings.advancedRequestSettings.manualMode}>
+                    <label class="mb-1 block text-xs font-medium text-surface-400">
+                      Thinking: {reasoningLabels[ils.reasoningEffort]}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="3"
+                      step="1"
+                      value={getReasoningIndex(ils.reasoningEffort)}
+                      onchange={(e) => {
+                        if (!settings.systemServicesSettings.interactiveLorebook) {
+                          settings.systemServicesSettings.interactiveLorebook = getDefaultInteractiveLorebookSettings();
+                        }
+                        settings.systemServicesSettings.interactiveLorebook.reasoningEffort = getReasoningValue(parseInt(e.currentTarget.value));
+                        settings.saveSystemServicesSettings();
+                      }}
+                      disabled={settings.advancedRequestSettings.manualMode}
+                      class="w-full h-2"
+                    />
+                    <div class="flex justify-between text-xs text-surface-500">
+                      <span>Off</span>
+                      <span>Low</span>
+                      <span>Medium</span>
+                      <span>High</span>
+                    </div>
+                  </div>
+
+                  <!-- Provider Only -->
+                  <div class="mb-3" class:opacity-50={settings.advancedRequestSettings.manualMode}>
+                    <ProviderOnlySelector
+                      providers={providerOptions}
+                      selected={ils.providerOnly}
+                      disabled={settings.advancedRequestSettings.manualMode}
+                      onChange={(next) => {
+                        if (!settings.systemServicesSettings.interactiveLorebook) {
+                          settings.systemServicesSettings.interactiveLorebook = getDefaultInteractiveLorebookSettings();
+                        }
+                        settings.systemServicesSettings.interactiveLorebook.providerOnly = next;
+                        settings.saveSystemServicesSettings();
+                      }}
+                    />
+                  </div>
+
+                  {#if settings.advancedRequestSettings.manualMode}
+                    <div class="border-t border-surface-700 pt-3">
+                      <div class="mb-1 flex items-center justify-between">
+                        <label class="text-xs font-medium text-surface-400">Manual Request Body (JSON)</label>
+                        <button
+                          class="text-xs text-accent-400 hover:text-accent-300"
+                          onclick={() => openManualBodyEditor('Interactive Lorebook', ils.manualBody, (next) => {
+                            if (!settings.systemServicesSettings.interactiveLorebook) {
+                              settings.systemServicesSettings.interactiveLorebook = getDefaultInteractiveLorebookSettings();
+                            }
+                            settings.systemServicesSettings.interactiveLorebook.manualBody = next;
+                            settings.saveSystemServicesSettings();
+                          })}
+                        >
+                          Pop out
+                        </button>
+                      </div>
+                      <textarea
+                        value={ils.manualBody}
+                        onchange={(e) => {
+                          if (!settings.systemServicesSettings.interactiveLorebook) {
+                            settings.systemServicesSettings.interactiveLorebook = getDefaultInteractiveLorebookSettings();
+                          }
+                          settings.systemServicesSettings.interactiveLorebook.manualBody = e.currentTarget.value;
+                        }}
                         onblur={() => settings.saveSystemServicesSettings()}
                         class="input text-xs min-h-[140px] resize-y font-mono w-full"
                         rows="6"

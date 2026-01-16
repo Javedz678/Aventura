@@ -12,6 +12,8 @@ import type {
   Tool,
   ToolCall,
   AgenticMessage,
+  AgenticStreamChunk,
+  ReasoningDetail,
 } from './types';
 import { settings } from '$lib/stores/settings.svelte';
 import { ui } from '$lib/stores/ui.svelte';
@@ -300,6 +302,314 @@ export class OpenAIProvider implements AIProvider {
       }
       throw error;
     }
+  }
+
+  /**
+   * Stream a response with tool calling support.
+   * Yields events as they arrive: reasoning, content, and tool calls.
+   * Per OpenRouter docs, reasoning_details arrives via delta.reasoning_details.
+   */
+  async *streamWithTools(request: AgenticRequest): AsyncGenerator<AgenticStreamChunk> {
+    log('streamWithTools called', {
+      model: request.model,
+      messagesCount: request.messages.length,
+      toolsCount: request.tools.length,
+      temperature: request.temperature,
+      maxTokens: request.maxTokens,
+    });
+
+    const requestBody: Record<string, unknown> = {
+      model: request.model,
+      messages: request.messages,
+      temperature: request.temperature ?? 0.7,
+      max_tokens: request.maxTokens ?? 8192,
+      tools: request.tools,
+      tool_choice: request.tool_choice ?? 'auto',
+      stream: true,
+      ...request.extraBody,
+    };
+
+    log('Sending streaming tool-enabled request...');
+
+    // Ensure base URL has trailing slash
+    const baseUrl = this.settings.openaiApiURL.endsWith('/')
+      ? this.settings.openaiApiURL
+      : this.settings.openaiApiURL + '/';
+
+    // Debug logging
+    const startTime = Date.now();
+    let debugRequestId: string | undefined;
+    if (settings.uiSettings.debugMode) {
+      debugRequestId = ui.addDebugRequest('streamWithTools', {
+        url: baseUrl + 'chat/completions',
+        method: 'POST',
+        body: requestBody,
+      });
+    }
+
+    // Create timeout controller (3 minutes for connection)
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      log('Stream connection timeout triggered (3 minutes)');
+      timeoutController.abort();
+    }, 180000);
+
+    if (request.signal) {
+      request.signal.addEventListener('abort', () => timeoutController.abort());
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(baseUrl + 'chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.settings.openaiApiKey}`,
+          'HTTP-Referer': 'https://aventura.camp',
+          'X-Title': 'Aventura',
+        },
+        body: JSON.stringify(requestBody),
+        signal: timeoutController.signal,
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        if (request.signal?.aborted) {
+          throw error;
+        }
+        throw new Error('Stream connection timed out after 3 minutes');
+      }
+      throw error;
+    }
+
+    clearTimeout(timeoutId);
+
+    log('Stream response received', { status: response.status, ok: response.ok });
+
+    if (!response.ok) {
+      const error = await response.text();
+      log('Stream API error', { status: response.status, error });
+      if (settings.uiSettings.debugMode && debugRequestId) {
+        ui.addDebugResponse(debugRequestId, 'streamWithTools', { status: response.status, error }, startTime, error);
+      }
+      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body');
+    }
+
+    log('Starting to read tool-enabled stream...');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let chunkCount = 0;
+
+    // Accumulated state for building final response
+    let accumulatedContent = '';
+    let accumulatedReasoning = '';
+    const accumulatedReasoningDetails: ReasoningDetail[] = [];
+    const toolCallsMap = new Map<number, { id: string; name: string; arguments: string }>();
+    let finishReason: 'stop' | 'tool_calls' | 'length' | 'content_filter' = 'stop';
+    let model = request.model;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        log('Stream reader done');
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') {
+            log('Received [DONE] signal');
+
+            // Build final tool calls array
+            const toolCalls: ToolCall[] = Array.from(toolCallsMap.entries())
+              .sort(([a], [b]) => a - b)
+              .map(([_, tc]) => ({
+                id: tc.id,
+                type: 'function' as const,
+                function: {
+                  name: tc.name,
+                  arguments: tc.arguments,
+                },
+              }));
+
+            // Debug logging
+            if (settings.uiSettings.debugMode && debugRequestId) {
+              ui.addDebugResponse(debugRequestId, 'streamWithTools', {
+                content: accumulatedContent,
+                toolCalls: toolCalls.length,
+                reasoningDetails: accumulatedReasoningDetails.length,
+                chunks: chunkCount,
+                streaming: true,
+              }, startTime);
+            }
+
+            // Yield final response
+            yield {
+              type: 'done',
+              response: {
+                content: accumulatedContent || null,
+                model,
+                tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+                finish_reason: finishReason,
+                reasoning: accumulatedReasoning || undefined,
+                reasoning_details: accumulatedReasoningDetails.length > 0 ? accumulatedReasoningDetails : undefined,
+              },
+            };
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            chunkCount++;
+
+            // Log first few chunks to debug what we're getting
+            if (chunkCount <= 5) {
+              log('Stream chunk #' + chunkCount + ':', JSON.stringify(parsed).substring(0, 200));
+            }
+
+            // Update model from response
+            if (parsed.model) {
+              model = parsed.model;
+            }
+
+            const choice = parsed.choices?.[0];
+            if (!choice) continue;
+
+            // Update finish reason
+            if (choice.finish_reason) {
+              finishReason = choice.finish_reason;
+            }
+
+            const delta = choice.delta;
+            if (!delta) continue;
+
+            // Log delta contents on first few chunks
+            if (chunkCount <= 5) {
+              log('Delta keys:', Object.keys(delta).join(', '));
+            }
+
+            // Handle reasoning - prefer reasoning_details, fallback to legacy reasoning field
+            // Only use one to avoid double-yielding the same content
+            const hasReasoningDetails = delta.reasoning_details && Array.isArray(delta.reasoning_details) && delta.reasoning_details.length > 0;
+
+            if (hasReasoningDetails) {
+              for (const detail of delta.reasoning_details) {
+                if (detail.type === 'reasoning.text' && detail.text) {
+                  const text = detail.text;
+                  // Some providers (Z.AI) insert erroneous newlines between tokens
+                  // Filter out chunks that are just whitespace/newlines
+                  if (text.trim() === '') {
+                    // Skip pure whitespace chunks entirely - don't accumulate or yield
+                    continue;
+                  }
+                  log('Streaming reasoning_details.text chunk:', JSON.stringify(text.substring(0, 50)));
+                  yield { type: 'reasoning', content: text };
+                  accumulatedReasoning += text;
+                  accumulatedReasoningDetails.push(detail);
+                } else {
+                  // Non-text details (summary, encrypted) - keep them
+                  accumulatedReasoningDetails.push(detail);
+                }
+              }
+            } else if (delta.reasoning) {
+              // Only use legacy reasoning if reasoning_details not present
+              const text = delta.reasoning;
+              // Filter out pure whitespace chunks (don't yield, but still process content below)
+              if (text.trim() !== '') {
+                log('Streaming legacy reasoning chunk:', JSON.stringify(text.substring(0, 50)));
+                yield { type: 'reasoning', content: text };
+                accumulatedReasoning += text;
+              }
+            }
+
+            // Handle content
+            if (delta.content) {
+              yield { type: 'content', content: delta.content };
+              accumulatedContent += delta.content;
+            }
+
+            // Handle tool calls (streamed incrementally)
+            if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls) {
+                const index = tc.index ?? 0;
+
+                if (!toolCallsMap.has(index)) {
+                  // New tool call
+                  toolCallsMap.set(index, {
+                    id: tc.id || '',
+                    name: tc.function?.name || '',
+                    arguments: tc.function?.arguments || '',
+                  });
+
+                  if (tc.id && tc.function?.name) {
+                    yield { type: 'tool_call_start', id: tc.id, name: tc.function.name };
+                  }
+                } else {
+                  // Update existing tool call
+                  const existing = toolCallsMap.get(index)!;
+                  if (tc.id) existing.id = tc.id;
+                  if (tc.function?.name) existing.name = tc.function.name;
+                  if (tc.function?.arguments) {
+                    existing.arguments += tc.function.arguments;
+                    yield { type: 'tool_call_args', id: existing.id, args: tc.function.arguments };
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore parsing errors for incomplete JSON
+            log('JSON parse error (may be incomplete):', data.substring(0, 50));
+          }
+        }
+      }
+    }
+
+    // Handle case where stream ended without [DONE]
+    const toolCalls: ToolCall[] = Array.from(toolCallsMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([_, tc]) => ({
+        id: tc.id,
+        type: 'function' as const,
+        function: {
+          name: tc.name,
+          arguments: tc.arguments,
+        },
+      }));
+
+    if (settings.uiSettings.debugMode && debugRequestId) {
+      ui.addDebugResponse(debugRequestId, 'streamWithTools', {
+        content: accumulatedContent,
+        toolCalls: toolCalls.length,
+        reasoningDetails: accumulatedReasoningDetails.length,
+        chunks: chunkCount,
+        streaming: true,
+      }, startTime);
+    }
+
+    yield {
+      type: 'done',
+      response: {
+        content: accumulatedContent || null,
+        model,
+        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+        finish_reason: finishReason,
+        reasoning: accumulatedReasoning || undefined,
+        reasoning_details: accumulatedReasoningDetails.length > 0 ? accumulatedReasoningDetails : undefined,
+      },
+    };
+
+    log('Stream finished', { totalChunks: chunkCount });
   }
 
   async *streamResponse(request: GenerationRequest): AsyncIterable<StreamChunk> {

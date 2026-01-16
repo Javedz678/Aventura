@@ -154,6 +154,18 @@ export interface StreamChunk {
   done: boolean;
 }
 
+/**
+ * Streaming chunk types for tool-enabled streaming responses.
+ * Used by streamWithTools to yield events as they arrive from the API.
+ */
+export type AgenticStreamChunk =
+  | { type: 'reasoning'; content: string }
+  | { type: 'reasoning_detail'; detail: ReasoningDetail }
+  | { type: 'content'; content: string }
+  | { type: 'tool_call_start'; id: string; name: string }
+  | { type: 'tool_call_args'; id: string; args: string }
+  | { type: 'done'; response: AgenticResponse }
+
 export interface ModelInfo {
   id: string;
   name: string;

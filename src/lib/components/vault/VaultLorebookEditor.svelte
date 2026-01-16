@@ -1,12 +1,13 @@
 <script lang="ts">
   import type { VaultLorebook, VaultLorebookEntry, EntryType, EntryInjectionMode } from '$lib/types';
   import { lorebookVault } from '$lib/stores/lorebookVault.svelte';
-  import { 
-    X, Plus, Search, Trash2, Save, ArrowLeft, 
-    Users, MapPin, Box, Flag, Brain, Calendar, 
-    MoreVertical, AlertCircle, Eye, EyeOff
+  import {
+    X, Plus, Search, Trash2, Save, ArrowLeft,
+    Users, MapPin, Box, Flag, Brain, Calendar,
+    MoreVertical, AlertCircle, Eye, EyeOff, Bot
   } from 'lucide-svelte';
   import { fade, slide } from 'svelte/transition';
+  import InteractiveLorebookChat from './InteractiveLorebookChat.svelte';
 
   interface Props {
     lorebook: VaultLorebook;
@@ -27,6 +28,7 @@
   let saving = $state(false);
   let error = $state<string | null>(null);
   let activeTab = $state<'editor' | 'settings'>('editor');
+  let showInteractiveChat = $state(false);
 
   // Filtered entries
   const filteredEntries = $derived.by(() => {
@@ -83,10 +85,37 @@
         entryBreakdown: breakdown
       }
     }).then(() => {
-      onClose();
+      saving = false;
     }).catch(e => {
       error = e instanceof Error ? e.message : 'Failed to save lorebook';
       saving = false;
+    });
+  }
+
+  // Silent save function for auto-saving (doesn't close editor)
+  async function handleSilentSave(): Promise<void> {
+    if (!name.trim()) {
+      throw new Error('Lorebook name is required');
+    }
+
+    // Update metadata entry breakdown
+    const breakdown: Record<EntryType, number> = {
+      character: 0, location: 0, item: 0, faction: 0, concept: 0, event: 0
+    };
+    entries.forEach(e => {
+      if (breakdown[e.type] !== undefined) breakdown[e.type]++;
+    });
+
+    await lorebookVault.update(lorebook.id, {
+      name,
+      description: description || null,
+      entries,
+      metadata: {
+        ...lorebook.metadata,
+        format: lorebook.metadata?.format ?? 'aventura',
+        totalEntries: entries.length,
+        entryBreakdown: breakdown
+      }
     });
   }
 
@@ -164,6 +193,16 @@
         >
           {activeTab === 'settings' ? 'Close Settings' : 'Settings'}
         </button>
+
+        {#if name.trim()}
+          <button
+            class="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500"
+            onclick={() => showInteractiveChat = !showInteractiveChat}
+          >
+            <Bot class="h-4 w-4" />
+            {showInteractiveChat ? 'Close Chat' : 'Expand with AI'}
+          </button>
+        {/if}
 
         <button
           class="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-500 disabled:opacity-50"
@@ -439,6 +478,17 @@
             </div>
           {/if}
         </div>
+      {/if}
+
+      <!-- Interactive Chat Panel -->
+      {#if showInteractiveChat && name.trim()}
+        <InteractiveLorebookChat
+          {lorebook}
+          {entries}
+          onEntriesChange={(newEntries) => { entries = newEntries; }}
+          onClose={() => showInteractiveChat = false}
+          onSave={handleSilentSave}
+        />
       {/if}
     </div>
 

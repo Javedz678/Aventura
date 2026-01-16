@@ -842,6 +842,54 @@
   }
 }
 
+/* Chat markdown overrides - compact spacing for chat bubbles */
+.chat-markdown.prose-content {
+  p {
+    @apply mb-2 last:mb-0;
+  }
+
+  ul, ol {
+    @apply my-2;
+  }
+
+  li {
+    @apply mb-1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply mb-2 mt-3 first:mt-0;
+  }
+
+  pre {
+    @apply my-2;
+  }
+
+  blockquote {
+    @apply my-2;
+  }
+
+  code {
+    @apply text-xs;
+  }
+}
+
+/* Streaming cursor animation */
+.streaming-cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  background-color: currentColor;
+  opacity: 0.7;
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 1px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0; }
+}
+
 /* Retro Console theme prose overrides */
 [data-theme="retro-console"] .prose-content {
   h1, h2, h3, h4, h5, h6 {
