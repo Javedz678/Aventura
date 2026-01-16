@@ -215,7 +215,8 @@
   }
 
   async function handleImport(card: DiscoveryCard) {
-    if (card.imageUrl && importedUrls.has(card.imageUrl)) return;
+    const sourceId = card.imageUrl || card.avatarUrl;
+    if (sourceId && importedUrls.has(sourceId)) return;
     
     errorMessage = null;
 
@@ -603,7 +604,7 @@
             <DiscoveryCardComponent
               {card}
               onImport={handleImport}
-              isImported={!!card.imageUrl && importedUrls.has(card.imageUrl)}
+              isImported={importedUrls.has(card.imageUrl || card.avatarUrl)}
               {nsfwMode}
             />
           {/each}
