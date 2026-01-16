@@ -39,6 +39,11 @@ export class QuillGenProvider implements DiscoveryProvider {
 
     let filtered = cachedCards;
 
+    // Filter NSFW
+    if (options.nsfw === false) {
+      filtered = filtered.filter(c => !c.nsfw);
+    }
+
     if (options.query) {
       const q = options.query.toLowerCase();
       filtered = filtered.filter(c => 

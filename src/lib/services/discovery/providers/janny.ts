@@ -83,7 +83,9 @@ export class JannyProvider implements DiscoveryProvider {
         facets: ['isLowQuality', 'tagIds', 'totalToken'],
         attributesToCrop: ['description:300'],
         cropMarker: '...',
-        filter: [`totalToken <= 4101 AND totalToken >= 29`],
+        filter: options.nsfw === false
+          ? [`totalToken <= 4101 AND totalToken >= 29`, `(isNsfw = false)`]
+          : [`totalToken <= 4101 AND totalToken >= 29`],
         attributesToHighlight: ['name', 'description'],
         highlightPreTag: '__ais-highlight__',
         highlightPostTag: '__/ais-highlight__',

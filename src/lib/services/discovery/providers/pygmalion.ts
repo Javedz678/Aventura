@@ -49,7 +49,8 @@ export class PygmalionProvider implements DiscoveryProvider {
     const data = await response.json();
     const characters = data.characters || [];
     
-    const cards = characters.map((c: any) => this.transformCard(c));
+    // Pass nsfw state to transform to label potential NSFW content if we asked for it
+    const cards = characters.map((c: any) => this.transformCard(c, input.includeSensitive));
     const hasMore = characters.length >= input.pageSize;
 
     return {
@@ -59,7 +60,7 @@ export class PygmalionProvider implements DiscoveryProvider {
     };
   }
 
-  private transformCard(char: any): DiscoveryCard {
+  private transformCard(char: any, askedForSensitive: boolean): DiscoveryCard {
     return {
       id: char.id,
       name: char.displayName || 'Unnamed',
@@ -75,7 +76,9 @@ export class PygmalionProvider implements DiscoveryProvider {
       },
       source: 'pygmalion',
       type: 'character',
-      nsfw: false, // Not flagged in list, determined by filter
+      // If we asked for sensitive content, we assume it's mixed and potentially NSFW
+      // since the API doesn't seem to flag individual items in the search response.
+      nsfw: askedForSensitive, 
       raw: char
     };
   }

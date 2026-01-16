@@ -73,7 +73,9 @@ export class RisuRealmProvider implements DiscoveryProvider {
     }
 
     const cards = this.parseDevalueData(nodeData);
-    const transformed = cards.map(c => this.transformCard(c));
+    
+    // Pass sorting options to transform to detect mixed content context
+    const transformed = cards.map(c => this.transformCard(c, options.nsfw !== false));
 
     // Pagination heuristic
     const pageSize = 30;
@@ -128,7 +130,7 @@ export class RisuRealmProvider implements DiscoveryProvider {
     return cards;
   }
 
-  private transformCard(card: any): DiscoveryCard {
+  private transformCard(card: any, askedForSensitive: boolean = false): DiscoveryCard {
     const tags = Array.isArray(card.tags) ? card.tags : [];
     
     // Parse downloads
@@ -155,7 +157,8 @@ export class RisuRealmProvider implements DiscoveryProvider {
       },
       source: 'risu_realm',
       type: 'character',
-      nsfw: false, // Not explicitly flagged in list
+      // If we asked for mixed content, we must label unlabeled items as NSFW to be safe
+      nsfw: askedForSensitive, 
       raw: card
     };
   }
