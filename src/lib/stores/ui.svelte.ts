@@ -91,7 +91,7 @@ interface PersistedActivationData {
 class UIStore {
   activePanel = $state<ActivePanel>('story');
   sidebarTab = $state<SidebarTab>('characters');
-  sidebarOpen = $state(true);
+  sidebarOpen = $state(typeof window !== 'undefined' ? window.innerWidth >= 640 : false);
   settingsModalOpen = $state(false);
   isGenerating = $state(false);
   isRetryingLastMessage = $state(false); // Hide stop button during completed-message retries
@@ -218,6 +218,10 @@ class UIStore {
   streamingReasoningExpanded = $state(false);
   expandedReasoningIds = new SvelteSet<string>();
 
+  // Sidebar widget collapsed state (session-only)
+  // Maps entity ID -> true if expanded
+  expandedEntities = new SvelteMap<string, boolean>();
+
   setStreamingReasoningExpanded(expanded: boolean) {
     this.streamingReasoningExpanded = expanded;
   }
@@ -231,6 +235,19 @@ class UIStore {
       this.expandedReasoningIds.add(entryId);
     } else {
       this.expandedReasoningIds.delete(entryId);
+    }
+  }
+
+  // Sidebar widget collapse methods
+  isEntityCollapsed(entityId: string): boolean {
+    return !this.expandedEntities.has(entityId);
+  }
+
+  toggleEntityCollapsed(entityId: string, collapsed: boolean) {
+    if (collapsed) {
+      this.expandedEntities.delete(entityId);
+    } else {
+      this.expandedEntities.set(entityId, true);
     }
   }
 
