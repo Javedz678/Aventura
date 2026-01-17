@@ -22,7 +22,7 @@
         <p class="text-xs text-surface-500">Edit full request body parameters for advanced models.</p>
       </div>
       <button
-        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+        class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors"
         class:bg-accent-600={settings.advancedRequestSettings.manualMode}
         class:bg-surface-600={!settings.advancedRequestSettings.manualMode}
         onclick={handleManualModeToggle}
@@ -50,7 +50,7 @@
         <p class="text-xs text-surface-500">Log API requests and responses for debugging.</p>
       </div>
       <button
-        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+        class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors"
         class:bg-accent-600={settings.uiSettings.debugMode}
         class:bg-surface-600={!settings.uiSettings.debugMode}
         onclick={() => settings.setDebugMode(!settings.uiSettings.debugMode)}
