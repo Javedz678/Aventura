@@ -1,58 +1,83 @@
 <script lang="ts">
   import { slide } from 'svelte/transition';
   import { parseMarkdown } from '$lib/utils/markdown';
+  import { ui } from '$lib/stores/ui.svelte';
+  import { settings } from '$lib/stores/settings.svelte';
 
   let { 
     content, 
     isStreaming = false,
-    isVisualProse = false
+    entryId,
   }: { 
     content: string; 
     isStreaming?: boolean;
-    isVisualProse?: boolean;
+    entryId?: string;
   } = $props();
 
-  // Auto-open while streaming, closed by default for completed entries
-  let isOpen = $state(isStreaming);
-
-  // Update isOpen when isStreaming changes to true (new generation started)
-  $effect(() => {
+  // Use persistent state from UI store shared between StoryEntry and StreamingEntry
+  let isOpen = $derived.by(() => {
     if (isStreaming) {
-      isOpen = true;
+      return ui.streamingReasoningExpanded;
     }
+    return entryId ? ui.isReasoningExpanded(entryId) : false;
   });
 
-  let renderedContent = $derived(
-    isVisualProse ? content : parseMarkdown(content)
-  );
+  // Toggle function that updates the appropriate store
+  function toggleOpen() {
+    if (isStreaming) {
+      ui.setStreamingReasoningExpanded(!isOpen);
+    } else if (entryId) {
+      ui.toggleReasoningExpanded(entryId, !isOpen);
+    }
+  }
+
+  let isVisible = $derived(settings.uiSettings.showReasoning || isStreaming);
+
+  // Clean content to prevent list items breaking into new lines (LLM artifact)
+  let cleanedContent = $derived(content);
+  
+  let renderedContent = $derived(parseMarkdown(cleanedContent));
 </script>
 
-<div class="reasoning-block mb-4">
-  <button 
-    class="flex items-center gap-2 text-left w-full bg-transparent border-none p-0 cursor-pointer group h-7"
-    onclick={() => isOpen = !isOpen}
-    title={isOpen ? "Collapse thought process" : "Expand thought process"}
-  >
-    <div class="flex items-center gap-2 text-surface-400">
-      {#if isStreaming}
-        <span class="text-sm italic">Thinking</span>
-        <span class="thinking-dots">
-          <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
-        </span>
-      {:else}
-        <span class="text-xs font-medium">Thought Process</span>
-      {/if}
-      
-      <span class="text-xs opacity-50">{isOpen ? '▼' : '▶'}</span>
-    </div>
-  </button>
-  
-  {#if isOpen}
-    <div class="reasoning-content mt-2 text-sm text-surface-400 italic" transition:slide={{ duration: 200 }}>
-      {@html renderedContent}
-    </div>
-  {/if}
-</div>
+{#if isVisible}
+  <div class="mb-4">
+    {#if !settings.uiSettings.showReasoning && isStreaming}
+      <div class="flex items-center gap-2 text-left w-full bg-transparent border-none p-0 h-7">
+        <div class="flex items-center gap-2 text-surface-400">
+          <span class="text-sm italic">Thinking</span>
+          <span class="thinking-dots">
+            <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+          </span>
+        </div>
+      </div>
+    {:else}
+      <button 
+        class="flex items-center gap-2 text-left w-full bg-transparent border-none p-0 cursor-pointer group h-7"
+        onclick={toggleOpen}
+        title={isOpen ? "Collapse thought process" : "Expand thought process"}
+      >
+        <div class="flex items-center gap-2 text-surface-400">
+          {#if isStreaming}
+            <span class="text-sm italic">Thinking</span>
+            <span class="thinking-dots">
+              <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+            </span>
+          {:else}
+            <span class="text-xs font-medium">Thought Process</span>
+          {/if}
+          
+          <span class="text-xs opacity-50">{isOpen ? '▼' : '▶'}</span>
+        </div>
+      </button>
+    {/if}
+    
+    {#if isOpen}
+      <div class="border-l-2 border-surface-400 pl-4 prose-content mt-2 text-sm text-surface-400 italic break-words" transition:slide={{ duration: 200 }}>
+        {@html renderedContent}
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
   /* Thinking dots animation */

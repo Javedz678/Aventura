@@ -32,7 +32,7 @@
       <div class="flex-1 min-w-0 flex flex-col gap-4">
         <!-- Reasoning Block -->
         {#if reasoning || isThinking}
-          <ReasoningBlock content={reasoning} isStreaming={true} isVisualProse={isVisualProse} />
+          <ReasoningBlock content={reasoning} isStreaming={true} />
         {/if}
 
         <!-- Story Content -->

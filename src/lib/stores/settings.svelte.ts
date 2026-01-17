@@ -1177,6 +1177,7 @@ class SettingsStore {
     debugMode: false,
     disableSuggestions: false,
     disableActionPrefixes: false,
+    showReasoning: true,
   });
 
   advancedRequestSettings = $state<AdvancedRequestSettings>(getDefaultAdvancedRequestSettings());
@@ -1342,6 +1343,9 @@ class SettingsStore {
 
       const disableActionPrefixes = await database.getSetting('disable_action_prefixes');
       if (disableActionPrefixes !== null) this.uiSettings.disableActionPrefixes = disableActionPrefixes === 'true';
+
+      const showReasoning = await database.getSetting('show_reasoning');
+      if (showReasoning !== null) this.uiSettings.showReasoning = showReasoning === 'true';
 
       const debugMode = await database.getSetting('debug_mode');
       if (debugMode !== null) this.uiSettings.debugMode = debugMode === 'true';
@@ -2103,6 +2107,11 @@ class SettingsStore {
     await database.setSetting('disable_action_prefixes', enabled.toString());
   }
 
+  async setShowReasoning(show: boolean) {
+    this.uiSettings.showReasoning = show;
+    await database.setSetting('show_reasoning', String(show));
+  }
+
   async setDebugMode(enabled: boolean) {
     this.uiSettings.debugMode = enabled;
     await database.setSetting('debug_mode', enabled.toString());
@@ -2348,6 +2357,7 @@ class SettingsStore {
       debugMode: false,
       disableSuggestions: false,
       disableActionPrefixes: false,
+      showReasoning: false,
     };
 
     // Reset font to default

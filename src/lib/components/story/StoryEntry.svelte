@@ -785,6 +785,12 @@ return sanitizeVisualProse(processed, entryId);
       saveEdit();
     }
   }
+
+  $effect(() => {
+    if (entry.type === 'narration' && isLatestEntry && ui.streamingReasoningExpanded) {
+      ui.transferStreamingReasoningState(entry.id);
+    }
+  });
 </script>
 
 <div class="group rounded-lg border-l-4 p-3 sm:p-4 {styles[entry.type]}">
@@ -845,7 +851,7 @@ return sanitizeVisualProse(processed, entryId);
         </div>
       {/if}
     </div>
-    <div class="flex-1">
+    <div class="flex-1 min-w-0">
       {#if entry.type === 'user_action'}
         <p class="user-action mb-1 text-sm font-medium">You</p>
       {/if}
@@ -962,10 +968,9 @@ return sanitizeVisualProse(processed, entryId);
         </div>
 {:else}
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-        <!-- Reasoning Block (if present) -->
         {#if entry.reasoning}
-          <div class="mb-4">
-            <ReasoningBlock content={entry.reasoning} isStreaming={false} isVisualProse={visualProseMode} />
+          <div>
+            <ReasoningBlock content={entry.reasoning} isStreaming={false} entryId={entry.id} />
           </div>
         {/if}
 

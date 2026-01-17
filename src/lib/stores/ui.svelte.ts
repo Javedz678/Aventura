@@ -6,7 +6,7 @@ import type { EntryRetrievalResult, ActivationTracker } from '$lib/services/ai/e
 import type { SyncMode } from '$lib/types/sync';
 import { SimpleActivationTracker } from '$lib/services/ai/entryRetrieval';
 import { database } from '$lib/services/database';
-import { SvelteMap } from 'svelte/reactivity';
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { StreamingHtmlRenderer } from '$lib/utils/htmlStreaming';
 
 // Debug log entry for request/response logging
@@ -208,6 +208,37 @@ class UIStore {
 
   // Retry last message callback - set by ActionInput for edit-and-retry feature
   private retryLastMessageCallback: (() => Promise<void>) | null = null;
+
+  // Reasoning block state persistence
+  streamingReasoningExpanded = $state(false);
+  expandedReasoningIds = new SvelteSet<string>();
+
+  setStreamingReasoningExpanded(expanded: boolean) {
+    this.streamingReasoningExpanded = expanded;
+  }
+
+  isReasoningExpanded(entryId: string): boolean {
+    return this.expandedReasoningIds.has(entryId);
+  }
+
+  toggleReasoningExpanded(entryId: string, expanded: boolean) {
+    if (expanded) {
+      this.expandedReasoningIds.add(entryId);
+    } else {
+      this.expandedReasoningIds.delete(entryId);
+    }
+  }
+
+  /**
+   * Transfer streaming expansion state to a specific entry ID (called when generation finishes).
+   * Only transfers if streaming was actually expanded.
+   */
+  transferStreamingReasoningState(entryId: string) {
+    if (this.streamingReasoningExpanded) {
+      this.expandedReasoningIds.add(entryId);
+      this.streamingReasoningExpanded = false;
+    }
+  }
 
   setActivePanel(panel: ActivePanel) {
     this.activePanel = panel;

@@ -665,6 +665,7 @@ export interface UISettings {
   debugMode: boolean;
   disableSuggestions: boolean;
   disableActionPrefixes: boolean;
+  showReasoning: boolean;
 }
 
 export interface UpdateSettings {
