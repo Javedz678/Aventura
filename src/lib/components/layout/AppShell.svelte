@@ -34,7 +34,7 @@
 </script>
 
 <div
-  class="app-shell flex h-screen w-screen bg-surface-900"
+  class="app-shell relative flex h-screen w-screen bg-surface-900"
   use:swipe={{ onSwipeRight: handleSwipeRight, onSwipeLeft: handleSwipeLeft, threshold: 50 }}
 >
   <!-- Mobile sidebar overlay (tap to close) -->
@@ -119,10 +119,26 @@
     padding-top: env(safe-area-inset-top, 0);
   }
 
+  /* Safe area background filler - matches header color (bg-surface-800) */
+  .app-shell::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top, 0);
+    background-color: var(--color-surface-800);
+    z-index: 0;
+  }
+
   /* Mobile: add fallback padding for Android status bar */
   @media (max-width: 768px) {
     .app-shell {
       padding-top: max(env(safe-area-inset-top, 0px), 28px);
+    }
+
+    .app-shell::before {
+      height: max(env(safe-area-inset-top, 0px), 28px);
     }
   }
 
