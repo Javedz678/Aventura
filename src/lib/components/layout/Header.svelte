@@ -61,9 +61,23 @@
     };
   });
 
-  async function exportAventura() {
+  async function handleExport(exportFn: () => Promise<boolean>, formatName: string) {
     if (!story.currentStory) return;
     showExportMenu = false;
+    try {
+      const success = await exportFn();
+      if (success) {
+        ui.showToast(`Exported story as ${formatName}`, 'info');
+      } else {
+        ui.showToast('Export cancelled', 'info');
+      }
+    } catch (error) {
+      console.error('[Header] Export failed:', error);
+      ui.showToast(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    }
+  }
+
+  async function exportAventura() {
     const [
       entries,
       characters,
@@ -76,48 +90,55 @@
       branches,
       chapters,
     ] = await Promise.all([
-      database.getStoryEntries(story.currentStory.id),
-      database.getCharacters(story.currentStory.id),
-      database.getLocations(story.currentStory.id),
-      database.getItems(story.currentStory.id),
-      database.getStoryBeats(story.currentStory.id),
-      database.getEntries(story.currentStory.id),
-      database.getEmbeddedImagesForStory(story.currentStory.id),
-      database.getCheckpoints(story.currentStory.id),
-      database.getBranches(story.currentStory.id),
-      database.getChapters(story.currentStory.id),
+      database.getStoryEntries(story.currentStory!.id),
+      database.getCharacters(story.currentStory!.id),
+      database.getLocations(story.currentStory!.id),
+      database.getItems(story.currentStory!.id),
+      database.getStoryBeats(story.currentStory!.id),
+      database.getEntries(story.currentStory!.id),
+      database.getEmbeddedImagesForStory(story.currentStory!.id),
+      database.getCheckpoints(story.currentStory!.id),
+      database.getBranches(story.currentStory!.id),
+      database.getChapters(story.currentStory!.id),
     ]);
-    await exportService.exportToAventura(
-      story.currentStory,
-      entries,
-      characters,
-      locations,
-      items,
-      storyBeats,
-      lorebookEntries,
-      embeddedImages,
-      checkpoints,
-      branches,
-      chapters,
+    await handleExport(
+      () =>
+        exportService.exportToAventura(
+          story.currentStory!,
+          entries,
+          characters,
+          locations,
+          items,
+          storyBeats,
+          lorebookEntries,
+          embeddedImages,
+          checkpoints,
+          branches,
+          chapters,
+        ),
+      'Aventura (.avt)',
     );
   }
 
   async function exportMarkdown() {
-    if (!story.currentStory) return;
-    showExportMenu = false;
-    await exportService.exportToMarkdown(
-      story.currentStory,
-      story.entries,
-      story.characters,
-      story.locations,
-      true,
+    await handleExport(
+      () =>
+        exportService.exportToMarkdown(
+          story.currentStory!,
+          story.entries,
+          story.characters,
+          story.locations,
+          true,
+        ),
+      'Markdown (.md)',
     );
   }
 
   async function exportText() {
-    if (!story.currentStory) return;
-    showExportMenu = false;
-    await exportService.exportToText(story.currentStory, story.entries);
+    await handleExport(
+      () => exportService.exportToText(story.currentStory!, story.entries),
+      'Plain Text (.txt)',
+    );
   }
 </script>
 
@@ -210,25 +231,34 @@
 
         {#if showExportMenu}
           <div
-            class="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-surface-600 bg-surface-800 py-1 shadow-lg"
+            class="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-surface-600 bg-surface-800 py-1 shadow-lg pointer-events-auto"
           >
             <button
-              class="flex w-full items-center gap-2 px-3 py-3 sm:py-2 text-left text-sm text-surface-300 hover:bg-surface-700 min-h-[44px]"
-              onclick={exportAventura}
+              class="flex w-full items-center gap-2 px-3 py-3 sm:py-2 text-left text-sm text-surface-300 hover:bg-surface-700 min-h-[44px] pointer-events-auto cursor-pointer"
+              onclick={(e) => {
+                e.stopPropagation();
+                exportAventura();
+              }}
             >
               <FileJson class="h-4 w-4 text-accent-400" />
               Aventura (.avt)
             </button>
             <button
-              class="flex w-full items-center gap-2 px-3 py-3 sm:py-2 text-left text-sm text-surface-300 hover:bg-surface-700 min-h-[44px]"
-              onclick={exportMarkdown}
+              class="flex w-full items-center gap-2 px-3 py-3 sm:py-2 text-left text-sm text-surface-300 hover:bg-surface-700 min-h-[44px] pointer-events-auto cursor-pointer"
+              onclick={(e) => {
+                e.stopPropagation();
+                exportMarkdown();
+              }}
             >
               <FileText class="h-4 w-4 text-blue-400" />
               Markdown (.md)
             </button>
             <button
-              class="flex w-full items-center gap-2 px-3 py-3 sm:py-2 text-left text-sm text-surface-300 hover:bg-surface-700 min-h-[44px]"
-              onclick={exportText}
+              class="flex w-full items-center gap-2 px-3 py-3 sm:py-2 text-left text-sm text-surface-300 hover:bg-surface-700 min-h-[44px] pointer-events-auto cursor-pointer"
+              onclick={(e) => {
+                e.stopPropagation();
+                exportText();
+              }}
             >
               <FileText class="h-4 w-4 text-surface-400" />
               Plain Text (.txt)
@@ -292,7 +322,7 @@
 <!-- Click outside to close export menu -->
 {#if showExportMenu}
   <div
-    class="fixed inset-0 z-40"
+    class="fixed inset-0 z-40 pointer-events-none"
     onclick={() => (showExportMenu = false)}
     onkeydown={(e) => e.key === "Escape" && (showExportMenu = false)}
     role="button"
