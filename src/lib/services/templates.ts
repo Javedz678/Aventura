@@ -88,7 +88,7 @@ export const QUICK_START_SEEDS: QuickStartSeed[] = [
       },
     },
   },
-  {
+{
     id: 'slice-of-life',
     name: 'Slice of Life',
     description: 'Experience everyday moments, build relationships, and find meaning in the ordinary.',
@@ -106,11 +106,21 @@ export const QUICK_START_SEEDS: QuickStartSeed[] = [
     },
   },
   {
-    id: 'custom',
-    name: 'Custom Adventure',
-    description: 'Start with a blank slate and define your own world, setting, and narrative style.',
-    genre: 'Custom',
-    initialState: {},
+    id: 'historical-drama',
+    name: 'Historical Drama',
+    description: 'Live through pivotal moments in history, navigating political intrigue and personal struggles.',
+    genre: 'Historical',
+    initialState: {
+      protagonist: {
+        name: 'The Noble',
+        description: 'A member of a declining aristocratic family seeking to restore their legacy',
+        traits: ['cunning', 'proud', 'conflicted'],
+      },
+      startingLocation: {
+        name: 'The Royal Court',
+        description: 'A grand palace filled with whispered schemes and dangerous alliances, where every smile hides a dagger.',
+      },
+    },
   },
 ];
 

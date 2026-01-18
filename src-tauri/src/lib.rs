@@ -123,7 +123,7 @@ pub fn run() {
             description: "entry_reasoning",
             sql: include_str!("../migrations/019_entry_reasoning.sql"),
             kind: MigrationKind::Up,
-        },
+        }
     ];
 
     tauri::Builder::default()
