@@ -717,6 +717,9 @@ export const CONTEXT_PLACEHOLDERS: ContextPlaceholder[] = [
   // Interactive Lorebook service
   { id: 'lorebook-name', name: 'Lorebook Name', token: 'lorebookName', category: 'service', description: 'Name of the lorebook being edited' },
   { id: 'entry-count', name: 'Entry Count', token: 'entryCount', category: 'service', description: 'Number of entries in the lorebook' },
+
+  // Tier 3 Entry Selection
+  { id: 'entry-summaries', name: 'Entry Summaries', token: 'entrySummaries', category: 'service', description: 'Numbered list of available lorebook entries for Tier 3 selection' },
 ];
 
 /**
@@ -1252,6 +1255,43 @@ Guidelines:
 - Often, no chapters need to be queried - return empty arrays if nothing is relevant
 - Maximum {{maxChaptersPerRetrieval}} chapters per query
 - Consider: characters mentioned, locations being revisited, plot threads referenced`,
+};
+
+const tier3EntrySelectionPromptTemplate: PromptTemplate = {
+  id: 'tier3-entry-selection',
+  name: 'Tier 3 Entry Selection',
+  category: 'service',
+  description: 'LLM-based selection of relevant lorebook entries for narrative context (Tier 3)',
+  content: `# Role
+You are selecting which story entries are relevant for the next narrative response.
+
+## Task
+Analyze the current scene, user input, and available entries to identify which entries are ACTUALLY relevant to this specific moment in the story.
+
+## Output Format
+Return ONLY a JSON array of numbers representing relevant entries.
+Example: [1, 3, 7]
+
+If no entries are relevant, return: []
+
+## Selection Criteria
+Consider:
+- Characters who might be referenced or affected
+- Locations that might be mentioned
+- Items that could be relevant to the action
+- Story threads that connect to this moment
+
+Only include entries that have a clear connection to the current scene or user's intended action. Do not include entries just because they exist in the world.`,
+  userContent: `# Current Scene
+{{recentContent}}
+
+# User's Input
+"{{userInput}}"
+
+# Available Entries
+{{entrySummaries}}
+
+Which entries (by number) are relevant to the current scene and user input? Return a JSON array of numbers.`,
 };
 
 const suggestionsPromptTemplate: PromptTemplate = {
@@ -2522,6 +2562,7 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
   chapterAnalysisPromptTemplate,
   chapterSummarizationPromptTemplate,
   retrievalDecisionPromptTemplate,
+  tier3EntrySelectionPromptTemplate,
   suggestionsPromptTemplate,
   styleReviewerPromptTemplate,
   timelineFillPromptTemplate,

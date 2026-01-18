@@ -11,6 +11,7 @@
 import type { Character, Location, Item, StoryBeat, StoryEntry, Chapter } from '$lib/types';
 import { settings } from '$lib/stores/settings.svelte';
 import type { OpenAIProvider as OpenAIProvider } from './openrouter';
+import { promptService } from '$lib/services/prompts';
 
 const DEBUG = true;
 
@@ -306,12 +307,13 @@ export class ContextBuilder {
 
     if (remainingEntries.length === 0) return [];
 
-    // Build prompt for LLM selection
+    // Build recent content for prompt
     const recentContent = recentEntries
       .slice(-3)
       .map(e => `[${e.type}]: ${e.content}`)
       .join('\n');
 
+    // Build entry summaries for prompt
     const entrySummaries = remainingEntries
       .map((e, i) => {
         const description = e.description || 'No description';
@@ -319,28 +321,21 @@ export class ContextBuilder {
       })
       .join('\n');
 
-    const prompt = `You are selecting which story entries are relevant for the next narrative response.
+    // Use centralized prompt system
+    // Tier 3 selection is a service prompt that doesn't need story context
+    const minimalContext = {
+      mode: 'adventure' as const,
+      pov: 'second' as const,
+      tense: 'present' as const,
+      protagonistName: '',
+    };
 
-CURRENT SCENE:
-${recentContent}
-
-USER'S INPUT:
-"${userInput}"
-
-AVAILABLE ENTRIES:
-${entrySummaries}
-
-Which entries (by number) are relevant to the current scene and user input?
-Consider:
-- Characters who might be referenced or affected
-- Locations that might be mentioned
-- Items that could be relevant
-- Story threads that connect to this moment
-
-Return a JSON array of numbers for relevant entries. Only include entries that are ACTUALLY relevant.
-Example: [1, 3, 7]
-
-If no entries are relevant, return: []`;
+    const systemPrompt = promptService.renderPrompt('tier3-entry-selection', minimalContext);
+    const userPrompt = promptService.renderUserPrompt('tier3-entry-selection', minimalContext, {
+      recentContent,
+      userInput,
+      entrySummaries,
+    });
 
     const entrySettings = settings.systemServicesSettings.entryRetrieval;
     const tier3Model = entrySettings?.model || 'x-ai/grok-4.1-fast';
@@ -348,7 +343,10 @@ If no entries are relevant, return: []`;
 
     try {
       const response = await this.provider.generateResponse({
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
         model: tier3Model,
         temperature: tier3Temperature,
         maxTokens: 8192,
