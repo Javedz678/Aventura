@@ -46,9 +46,10 @@
     Step3Genre,
     Step4Setting,
     Step5Characters,
-    Step6Portraits,
-    Step7WritingStyle,
-    Step8Opening,
+    Step6SupportingCast,
+    Step7Portraits,
+    Step8WritingStyle,
+    Step9Opening,
   } from "./steps";
 
   interface Props {
@@ -59,7 +60,7 @@
 
   // Wizard state
   let currentStep = $state(1);
-  const totalSteps = 8;
+  const totalSteps = 9;
 
   // Step 4: Setting - Scenario Selection
   let selectedScenarioId = $state<string | null>(null);
@@ -194,21 +195,23 @@
   // Step validation
   function canProceed(): boolean {
     switch (currentStep) {
-      case 1:
+      case 1: // Mode
         return true;
-      case 2:
+      case 2: // Lorebook (optional)
         return true;
-      case 3:
+      case 3: // Genre
         return selectedGenre !== "custom" || customGenre.trim().length > 0;
-      case 4:
+      case 4: // Setting
         return settingSeed.trim().length > 0;
-      case 5:
+      case 5: // Character (required - must have protagonist)
+        return protagonist !== null;
+      case 6: // Supporting Cast (optional)
         return true;
-      case 6:
+      case 7: // Portraits (optional)
         return true;
-      case 7:
+      case 8: // Writing Style
         return true;
-      case 8:
+      case 9: // Opening
         return storyTitle.trim().length > 0;
       default:
         return false;
@@ -1049,6 +1052,7 @@
     "Select a Genre",
     "Describe Your Setting",
     "Create Your Character",
+    "Supporting Cast (Optional)",
     "Character Portraits (Optional)",
     "Writing Style",
     "Generate Opening",
@@ -1338,6 +1342,12 @@
   function handleNavigateToVaultScenarios() {
     ui.setActivePanel("vault");
     ui.setVaultTab("scenarios");
+    onClose();
+  }
+
+  function handleNavigateToVaultCharacters() {
+    ui.setActivePanel("vault");
+    ui.setVaultTab("characters");
     onClose();
   }
 
@@ -1667,14 +1677,34 @@
           {selectedMode}
           {expandedSetting}
           {protagonist}
-          {supportingCharacters}
           {manualCharacterName}
           {manualCharacterDescription}
           {manualCharacterBackground}
           {manualCharacterMotivation}
           {manualCharacterTraits}
-          {showManualInput}
           {characterElaborationGuidance}
+          {isGeneratingProtagonist}
+          {isElaboratingCharacter}
+          {protagonistError}
+          {savedToVaultConfirm}
+          onManualNameChange={(v) => (manualCharacterName = v)}
+          onManualDescriptionChange={(v) => (manualCharacterDescription = v)}
+          onManualBackgroundChange={(v) => (manualCharacterBackground = v)}
+          onManualMotivationChange={(v) => (manualCharacterMotivation = v)}
+          onManualTraitsChange={(v) => (manualCharacterTraits = v)}
+          onCharacterGuidanceChange={(v) => (characterElaborationGuidance = v)}
+          onUseManualCharacter={useManualCharacter}
+          onElaborateCharacter={() => elaborateCharacter()}
+          onElaborateCharacterFurther={elaborateCharacterFurther}
+          onGenerateProtagonist={generateProtagonist}
+          onSaveToVault={handleSaveProtagonistToVault}
+          onSelectProtagonistFromVault={handleSelectProtagonistFromVault}
+          onNavigateToVault={handleNavigateToVaultCharacters}
+        />
+      {:else if currentStep === 6}
+        <Step6SupportingCast
+          {protagonist}
+          {supportingCharacters}
           {showSupportingCharacterForm}
           {editingSupportingCharacterIndex}
           {supportingCharacterName}
@@ -1683,21 +1713,8 @@
           {supportingCharacterRelationship}
           {supportingCharacterTraits}
           {supportingCharacterGuidance}
-          {isGeneratingProtagonist}
-          {isElaboratingCharacter}
           {isGeneratingCharacters}
           {isElaboratingSupportingCharacter}
-          {protagonistError}
-          {showProtagonistVaultPicker}
-          {showSupportingVaultPicker}
-          {savedToVaultConfirm}
-          onManualNameChange={(v) => (manualCharacterName = v)}
-          onManualDescriptionChange={(v) => (manualCharacterDescription = v)}
-          onManualBackgroundChange={(v) => (manualCharacterBackground = v)}
-          onManualMotivationChange={(v) => (manualCharacterMotivation = v)}
-          onManualTraitsChange={(v) => (manualCharacterTraits = v)}
-          onShowManualInputChange={(v) => (showManualInput = v)}
-          onCharacterGuidanceChange={(v) => (characterElaborationGuidance = v)}
           onSupportingNameChange={(v) => (supportingCharacterName = v)}
           onSupportingRoleChange={(v) => (supportingCharacterRole = v)}
           onSupportingDescriptionChange={(v) =>
@@ -1706,12 +1723,6 @@
             (supportingCharacterRelationship = v)}
           onSupportingTraitsChange={(v) => (supportingCharacterTraits = v)}
           onSupportingGuidanceChange={(v) => (supportingCharacterGuidance = v)}
-          onUseManualCharacter={useManualCharacter}
-          onElaborateCharacter={() => elaborateCharacter()}
-          onElaborateCharacterFurther={elaborateCharacterFurther}
-          onGenerateProtagonist={generateProtagonist}
-          onEditCharacter={editCharacter}
-          onSaveToVault={handleSaveProtagonistToVault}
           onOpenSupportingForm={openSupportingCharacterForm}
           onEditSupportingCharacter={editSupportingCharacter}
           onCancelSupportingForm={cancelSupportingCharacterForm}
@@ -1719,15 +1730,11 @@
           onElaborateSupportingCharacter={elaborateSupportingCharacter}
           onDeleteSupportingCharacter={deleteSupportingCharacter}
           onGenerateCharacters={generateCharacters}
-          onShowProtagonistVaultPicker={(show) =>
-            (showProtagonistVaultPicker = show)}
-          onShowSupportingVaultPicker={(show) =>
-            (showSupportingVaultPicker = show)}
-          onSelectProtagonistFromVault={handleSelectProtagonistFromVault}
           onSelectSupportingFromVault={handleSelectSupportingFromVault}
+          onNavigateToVault={handleNavigateToVaultCharacters}
         />
-      {:else if currentStep === 6}
-        <Step6Portraits
+      {:else if currentStep === 7}
+        <Step7Portraits
           {protagonist}
           {supportingCharacters}
           {imageGenerationEnabled}
@@ -1755,8 +1762,8 @@
           onRemoveSupportingPortrait={removeSupportingCharacterPortrait}
           onSupportingPortraitUpload={handleSupportingCharacterPortraitUpload}
         />
-      {:else if currentStep === 7}
-        <Step7WritingStyle
+      {:else if currentStep === 8}
+        <Step8WritingStyle
           {selectedPOV}
           {selectedTense}
           {tone}
@@ -1768,8 +1775,8 @@
           onVisualProseModeChange={(v) => (visualProseMode = v)}
           onInlineImageModeChange={(v) => (inlineImageMode = v)}
         />
-      {:else if currentStep === 8}
-        <Step8Opening
+      {:else if currentStep === 9}
+        <Step9Opening
           {storyTitle}
           {openingGuidance}
           {generatedOpening}
