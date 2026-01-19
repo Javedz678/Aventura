@@ -155,7 +155,7 @@
 >
   <!-- Left side: Story title -->
   <div class="flex items-center min-w-0">
-    <div class="flex items-center gap-2.5">
+    <div class="flex items-center gap-3 px-2.5 sm:px-1">
       {#if story.currentStory}
         <img src="/logo.png" alt="Aventura" class="h-7 w-7 flex-shrink-0" />
         <span
@@ -171,7 +171,7 @@
       {:else}
         <!-- App Branding (Library Mode) -->
         <img src="/logo.png" alt="Aventura" class="h-7 w-7 flex-shrink-0" />
-        <span class="font-semibold text-surface-100 text-base">Aventura</span>
+        <span class="font-semibold text-surface-100 text-lg">Aventura</span>
       {/if}
     </div>
   </div>
