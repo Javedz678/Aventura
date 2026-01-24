@@ -59,9 +59,9 @@
   let activeTab = $state<VaultTab>(ui.vaultTab);
   let searchQuery = $state("");
   let showFavoritesOnly = $state(false);
-let selectedTags = $state<string[]>([]);
-let filterLogic = $state<"AND" | "OR">("OR");
-let showTagManager = $state(false);
+  let selectedTags = $state<string[]>([]);
+  let filterLogic = $state<"AND" | "OR">("OR");
+  let showTagManager = $state(false);
 
   // Modal States
   let showCharForm = $state(false);
@@ -555,7 +555,7 @@ let showTagManager = $state(false);
   {/each}
 </Tabs>
 
-<!-- Character Form Modal -->
+ <!-- Character Form Modal -->
 {#if showCharForm}
   <VaultCharacterForm
     character={editingCharacter}

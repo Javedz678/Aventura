@@ -533,14 +533,18 @@
   z-index: 9999;
   background:
     repeating-linear-gradient(0deg,
+    repeating-linear-gradient(0deg,
       transparent 0px,
       transparent 1px,
       rgba(0, 0, 0, 0.15) 1px,
       rgba(0, 0, 0, 0.15) 2px),
     repeating-linear-gradient(0deg,
+      rgba(0, 0, 0, 0.15) 2px),
+    repeating-linear-gradient(0deg,
       var(--crt-scanline) 0px,
       var(--crt-scanline) 1px,
       transparent 1px,
+      transparent 3px);
       transparent 3px);
   animation: scanlines 0.08s linear infinite;
 }
@@ -555,6 +559,10 @@
   height: 100%;
   pointer-events: none;
   z-index: 9998;
+  background: radial-gradient(ellipse 120% 120% at 50% 50%,
+      transparent 50%,
+      rgba(0, 0, 0, 0.25) 80%,
+      rgba(0, 0, 0, 0.5) 100%);
   background: radial-gradient(ellipse 120% 120% at 50% 50%,
       transparent 50%,
       rgba(0, 0, 0, 0.25) 80%,
@@ -574,6 +582,7 @@
     background-position: 0 0;
   }
 
+
   100% {
     background-position: 0 3px;
   }
@@ -583,12 +592,17 @@
 
   0%,
   100% {
+
+  0%,
+  100% {
     opacity: 0.96;
   }
+
 
   50% {
     opacity: 1;
   }
+
 
   75% {
     opacity: 0.98;
@@ -600,8 +614,12 @@
 
   0%,
   100% {
+
+  0%,
+  100% {
     text-shadow: var(--crt-text-glow);
   }
+
 
   50% {
     text-shadow:
@@ -685,6 +703,9 @@
 /* Card styling with retro frame */
 [data-theme="retro-console"] .card {
   border: 2px solid var(--color-retro-green-muted);
+  background: linear-gradient(180deg,
+      rgba(10, 18, 16, 0.95) 0%,
+      rgba(5, 8, 8, 0.98) 100%);
   background: linear-gradient(180deg,
       rgba(10, 18, 16, 0.95) 0%,
       rgba(5, 8, 8, 0.98) 100%);
@@ -943,10 +964,28 @@
   50% {
     transform: translateY(-5px);
   }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 /* Undertale heart blink animation */
 @keyframes ut-heart-blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
 
   0%,
   100% {
@@ -1132,7 +1171,70 @@
   border-color: #808080 !important;
 }
 
+[data-theme="fallen-down"] .bg-surface-600 {
+  background-color: #0a0a0a !important;
+}
+
+[data-theme="fallen-down"] .bg-surface-500 {
+  background-color: #1a1a1a !important;
+}
+
+[data-theme="fallen-down"] .text-surface-50 {
+  color: #FFFFFF !important;
+}
+
+[data-theme="fallen-down"] .text-surface-100 {
+  color: #FFFFFF !important;
+}
+
+[data-theme="fallen-down"] .text-surface-200 {
+  color: #E0E0E0 !important;
+}
+
+[data-theme="fallen-down"] .text-surface-300 {
+  color: #C0C0C0 !important;
+}
+
+[data-theme="fallen-down"] .text-surface-400 {
+  color: #808080 !important;
+}
+
+[data-theme="fallen-down"] .text-surface-500 {
+  color: #606060 !important;
+}
+
+[data-theme="fallen-down"] .border-surface-700 {
+  border-color: #FFFFFF !important;
+}
+
+[data-theme="fallen-down"] .border-surface-600 {
+  border-color: #808080 !important;
+}
+
 /* Accent colors - all yellow, no blue */
+[data-theme="fallen-down"] .bg-accent-500 {
+  background-color: #FFFF00;
+}
+
+[data-theme="fallen-down"] .bg-accent-600 {
+  background-color: #FFFF00;
+}
+
+[data-theme="fallen-down"] .bg-accent-700 {
+  background-color: #E6E600;
+}
+
+[data-theme="fallen-down"] .text-accent-400 {
+  color: #FFFF00;
+}
+
+[data-theme="fallen-down"] .text-accent-500 {
+  color: #FFFF00;
+}
+
+[data-theme="fallen-down"] .text-accent-600 {
+  color: #FFFF00;
+}
 [data-theme="fallen-down"] .bg-accent-500 {
   background-color: #FFFF00;
 }
@@ -1173,10 +1275,29 @@
 [data-theme="fallen-down"] [class*="focus:ring"] {
   --tw-ring-color: #FFFF00 !important;
 }
+[data-theme="fallen-down"] .ring-accent-500 {
+  --tw-ring-color: #FFFF00;
+}
+
+[data-theme="fallen-down"] .focus\:ring-accent-500:focus {
+  --tw-ring-color: #FFFF00;
+}
+
+[data-theme="fallen-down"] *:focus {
+  outline-color: #FFFF00;
+}
+
+[data-theme="fallen-down"] [class*="focus:ring"] {
+  --tw-ring-color: #FFFF00 !important;
+}
 
 /* Override ALL blue colors to yellow (Undertale has no blue UI) */
 [data-theme="fallen-down"] .text-blue-400,
 [data-theme="fallen-down"] .text-blue-500,
+[data-theme="fallen-down"] .text-blue-600 {
+  color: #FFFF00;
+}
+
 [data-theme="fallen-down"] .text-blue-600 {
   color: #FFFF00;
 }
@@ -1188,8 +1309,16 @@
   color: #000000;
 }
 
+[data-theme="fallen-down"] .bg-blue-600 {
+  background-color: #FFFF00;
+  color: #000000;
+}
+
 [data-theme="fallen-down"] .border-blue-400,
 [data-theme="fallen-down"] .border-blue-500,
+[data-theme="fallen-down"] .border-blue-600 {
+  border-color: #FFFF00;
+}
 [data-theme="fallen-down"] .border-blue-600 {
   border-color: #FFFF00;
 }
@@ -1205,8 +1334,23 @@
 [data-theme="fallen-down"] .border-indigo-400 {
   border-color: #FFFF00;
 }
+[data-theme="fallen-down"] .bg-indigo-900 {
+  color: #FFFF00;
+  background-color: transparent;
+}
+
+[data-theme="fallen-down"] .border-indigo-400 {
+  border-color: #FFFF00;
+}
 
 /* Links - yellow like Undertale's save points */
+[data-theme="fallen-down"] a {
+  color: #FFFF00;
+}
+
+[data-theme="fallen-down"] a:hover {
+  color: #FFFFFF;
+}
 [data-theme="fallen-down"] a {
   color: #FFFF00;
 }
@@ -1298,6 +1442,21 @@
 [data-theme="fallen-down"] .text-yellow-400 {
   color: #FFFF00;
 }
+[data-theme="fallen-down"] .text-green-400 {
+  color: #00FF00;
+}
+
+[data-theme="fallen-down"] .text-amber-400 {
+  color: #FFA500;
+}
+
+[data-theme="fallen-down"] .text-red-400 {
+  color: #FF0000;
+}
+
+[data-theme="fallen-down"] .text-yellow-400 {
+  color: #FFFF00;
+}
 
 /* Primary button - yellow like FIGHT/ACT buttons */
 [data-theme="fallen-down"] .btn-primary {
@@ -1305,6 +1464,7 @@
   border: 2px solid #FFFF00;
   color: #FFFF00;
 }
+
 
 [data-theme="fallen-down"] .btn-primary:hover {
   background-color: #FFFF00;
@@ -1330,6 +1490,7 @@
 [data-theme="fallen-down"] input[type="range"]::-webkit-slider-thumb {
   background-color: #FFFF00;
 }
+
 
 [data-theme="fallen-down"] input[type="range"]::-moz-range-thumb {
   background-color: #FFFF00;

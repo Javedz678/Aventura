@@ -164,7 +164,7 @@
           <Textarea
             id="description"
             bind:value={description}
-            placeholder="Brief description of the character"
+            placeholder="Brief description of character"
             rows={3}
             class="resize-none"
           />
