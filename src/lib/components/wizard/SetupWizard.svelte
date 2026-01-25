@@ -170,6 +170,7 @@
   let openingError = $state<string | null>(null);
   let isEditingOpening = $state(false);
   let openingDraft = $state("");
+  let manualOpeningText = $state("");
 
   // Derived display variables - use translated version when available, fall back to original
   const expandedSettingDisplay = $derived(expandedSettingTranslated ?? expandedSetting);
@@ -878,6 +879,8 @@
     isGeneratingOpening = true;
     openingError = null;
     clearOpeningEditState();
+    // Clear manual text since we're generating with AI
+    manualOpeningText = "";
 
     const wizardData: WizardData = {
       mode: selectedMode,
@@ -984,6 +987,12 @@
   function clearOpeningEditState() {
     isEditingOpening = false;
     openingDraft = "";
+  }
+
+  function clearGeneratedOpening() {
+    generatedOpening = null;
+    generatedOpeningTranslated = null;
+    openingError = null;
   }
 
   function startOpeningEdit() {
@@ -1111,6 +1120,19 @@
   async function createStory() {
     if (!storyTitle.trim()) return;
 
+    // Use manual opening if provided
+    if (!generatedOpening && manualOpeningText.trim()) {
+      generatedOpening = {
+        scene: manualOpeningText.trim(),
+        title: storyTitle || "Untitled Story",
+        initialLocation: {
+          name: "Starting Location",
+          description: "The place where your journey begins.",
+        },
+      };
+    }
+
+    // Use card imported opening if available
     if (!generatedOpening && cardImportedFirstMessage) {
       generatedOpening = {
         scene: cardImportedFirstMessage,
@@ -1123,7 +1145,7 @@
     }
 
     if (!generatedOpening) {
-      openingError = "Please generate an opening scene first";
+      openingError = "Please provide an opening scene (write your own or generate with AI)";
       return;
     }
 
@@ -2187,6 +2209,7 @@
           {isEditingOpening}
           {openingDraft}
           {openingError}
+          {manualOpeningText}
           {cardImportedFirstMessage}
           {cardImportedAlternateGreetings}
           {selectedGreetingIndex}
@@ -2209,6 +2232,8 @@
           onDraftChange={(v) => (openingDraft = v)}
           onUseCardOpening={useCardOpening}
           onClearCardOpening={clearCardOpening}
+          onManualOpeningChange={(v) => (manualOpeningText = v)}
+          onClearGenerated={clearGeneratedOpening}
         />
       {/if}
     </div>
@@ -2234,8 +2259,8 @@
             isGeneratingOpening ||
             isRefiningOpening ||
             isEditingOpening ||
-            !generatedOpening}
-          title={!generatedOpening ? "Generate an opening scene first" : ""}
+            (!generatedOpening && !manualOpeningText.trim() && !cardImportedFirstMessage)}
+          title={(!generatedOpening && !manualOpeningText.trim() && !cardImportedFirstMessage) ? "Provide an opening scene first" : ""}
         >
           <Play class="h-4 w-4" />
           Begin Story

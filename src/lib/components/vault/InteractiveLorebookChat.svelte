@@ -21,6 +21,7 @@
   import { Textarea } from '$lib/components/ui/textarea';
   import { Badge } from '$lib/components/ui/badge';
   import { cn } from '$lib/utils/cn';
+  import { isTouchDevice } from '$lib/utils/swipe';
 
   // AbortController for cancelling ongoing requests
   let abortController: AbortController | null = null;
@@ -339,7 +340,15 @@
   }
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    const isMobile = isTouchDevice();
+    
+    // On mobile: Enter = new line, Shift+Enter = send
+    // On desktop: Enter = send, Shift+Enter = new line
+    const shouldSubmit = isMobile 
+      ? (e.key === 'Enter' && e.shiftKey)
+      : (e.key === 'Enter' && !e.shiftKey);
+    
+    if (shouldSubmit) {
       e.preventDefault();
       handleSend();
     }
@@ -602,14 +611,14 @@
         title="Send message"
       >
         {#if isGenerating}
-          <Loader2 class="h-5 w-5 animate-spin" />
+          <Loader2 class="h-6 w-6 animate-spin" />
         {:else}
-          <Send class="h-5 w-5" />
+          <Send class="h-6 w-6" />
         {/if}
       </Button>
     </div>
     <div class="mt-2 text-xs text-muted-foreground hidden md:block text-center">
-      Press Enter to send, Shift+Enter for new line
+       Press {isTouchDevice() ? 'Shift+Enter to send, Enter for new line' : 'Enter to send, Shift+Enter for new line'}
     </div>
   </div>
 </div>
