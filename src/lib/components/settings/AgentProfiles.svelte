@@ -21,6 +21,7 @@
     Languages,
     Plus,
     Trash2,
+    Check,
   } from "lucide-svelte";
   import ModelSelector from "./ModelSelector.svelte";
 
@@ -229,6 +230,7 @@
   let editingPresetId = $state<string | null>(null);
   let tempPreset = $state<GenerationPreset | null>(null);
   let activeTaskMenu = $state<string | null>(null); // Just stores serviceId now
+  let resettingProfiles = $state(false);
 
   // Default profile assignments
   const defaultAssignments: Record<string, string> = {
@@ -327,11 +329,11 @@
   async function handleSavePreset() {
     if (!tempPreset) return;
     if (!tempPreset.model) {
-        await ask("Please select or enter a model.", {
-            title: "Validation Error",
-            kind: "error"
-        });
-        return;
+      await ask("Please select or enter a model.", {
+        title: "Validation Error",
+        kind: "error",
+      });
+      return;
     }
 
     const index = settings.generationPresets.findIndex(
@@ -386,15 +388,6 @@
   }
 
   async function handleResetProfiles() {
-    const confirmed = await ask(
-      "Reset all profiles to their default values and task assignments?",
-      {
-        title: "Reset Profiles",
-        kind: "warning",
-      },
-    );
-    if (!confirmed) return;
-
     await settings.resetGenerationPresets();
 
     // Assign tasks to their default profiles
@@ -454,7 +447,7 @@
 </script>
 
 <div class="pt-6 border-t">
-  <div class="flex items-center justify-between mb-4">
+  <div class="flex items-start sm:items-center justify-between mb-4">
     <div>
       <h3 class="text-base font-medium">Agent Profiles</h3>
       <p class="text-xs text-muted-foreground">
@@ -462,20 +455,52 @@
       </p>
     </div>
     <div class="flex items-center gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        onclick={handleResetProfiles}
-        title="Reset all profiles to defaults"
-        class="text-xs"
-      >
-        <RotateCcw class="h-3 w-3 mr-1" />
-        Reset
-      </Button>
-      <Button variant="secondary" size="sm" onclick={createNewPreset} class="text-xs">
-        <Plus class="h-3 w-3 mr-1" />
-        New Profile
-      </Button>
+      {#if resettingProfiles}
+        <span class="text-xs font-medium text-muted-foreground">
+          Reset all?
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          class="hover:bg-transparent text-muted-foreground hover:text-foreground w-5 px-0"
+          onclick={() => (resettingProfiles = false)}
+          title="Cancel"
+        >
+          <X class="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          class="hover:bg-transparent text-destructive w-5 px-0"
+          onclick={() => {
+            resettingProfiles = false;
+            handleResetProfiles();
+          }}
+          title="Confirm Reset"
+        >
+          <Check class="h-3.5 w-3.5" />
+        </Button>
+      {:else}
+        <Button
+          variant="ghost"
+          size="sm"
+          onclick={() => (resettingProfiles = true)}
+          title="Reset all profiles to defaults"
+          class="text-xs"
+        >
+          <RotateCcw class="h-3 w-3 mr-1" />
+          Reset
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onclick={createNewPreset}
+          class="text-xs"
+        >
+          <Plus class="h-3 w-3 mr-1" />
+          New Profile
+        </Button>
+      {/if}
     </div>
   </div>
 
@@ -483,12 +508,12 @@
     <Card.Root class="mb-6">
       <Card.Header class="pb-3">
         <div class="flex justify-between items-start">
-            <Card.Title class="text-base">
-                {tempPreset.id === editingPresetId &&
-                !settings.generationPresets.find((p) => p.id === tempPreset!.id)
-                  ? "Create Profile"
-                  : "Edit Profile"}
-            </Card.Title>
+          <Card.Title class="text-base">
+            {tempPreset.id === editingPresetId &&
+            !settings.generationPresets.find((p) => p.id === tempPreset!.id)
+              ? "Create Profile"
+              : "Edit Profile"}
+          </Card.Title>
           <Button
             variant="text"
             size="icon"
@@ -522,7 +547,7 @@
 
         <ModelSelector
           profileId={tempPreset?.profileId ?? null}
-          model={tempPreset?.model ?? ''}
+          model={tempPreset?.model ?? ""}
           onProfileChange={(id) => {
             if (tempPreset) tempPreset.profileId = id;
           }}
@@ -534,10 +559,10 @@
         <div class="grid grid-cols-2 gap-6">
           <div class="grid gap-4">
             <div class="flex justify-between">
-                <Label>Temperature</Label>
-                <span class="text-xs text-muted-foreground"
-                  >{tempPreset.temperature.toFixed(2)}</span
-                >
+              <Label>Temperature</Label>
+              <span class="text-xs text-muted-foreground"
+                >{tempPreset.temperature.toFixed(2)}</span
+              >
             </div>
             <Slider
               bind:value={tempPresetTemperature}
@@ -550,24 +575,26 @@
 
           <div class="grid gap-4">
             <div class="flex justify-between">
-                <Label>Max Tokens</Label>
-                <span class="text-xs text-muted-foreground"
-                  >{tempPreset.maxTokens}</span
-                >
+              <Label>Max Tokens</Label>
+              <span class="text-xs text-muted-foreground"
+                >{tempPreset.maxTokens}</span
+              >
             </div>
             <Slider
-                bind:value={tempPresetMaxTokens}
-                min={256}
-                max={32000}
-                step={256}
-                onValueChange={updateTempPresetMaxTokens}
+              bind:value={tempPresetMaxTokens}
+              min={256}
+              max={32000}
+              step={256}
+              onValueChange={updateTempPresetMaxTokens}
             />
           </div>
         </div>
 
         <div class="grid gap-4">
           <div class="flex justify-between">
-            <Label>Thinking: {reasoningLabels[tempPreset.reasoningEffort]}</Label>
+            <Label
+              >Thinking: {reasoningLabels[tempPreset.reasoningEffort]}</Label
+            >
           </div>
           <Slider
             bind:value={tempPresetReasoning}
@@ -602,8 +629,14 @@
       </Card.Content>
 
       <Card.Footer class="flex justify-end gap-2 pt-2">
-        <Button variant="ghost" size="sm" onclick={cancelEditingPreset}>Cancel</Button>
-        <Button size="sm" onclick={handleSavePreset} disabled={!tempPreset?.model}>Save Profile</Button>
+        <Button variant="ghost" size="sm" onclick={cancelEditingPreset}
+          >Cancel</Button
+        >
+        <Button
+          size="sm"
+          onclick={handleSavePreset}
+          disabled={!tempPreset?.model}>Save Profile</Button
+        >
       </Card.Footer>
     </Card.Root>
   {/if}
@@ -612,42 +645,39 @@
     {#each settings.generationPresets as preset (preset.id)}
       {#if preset.id !== editingPresetId}
         <Card.Root class="flex flex-col h-full">
-            <div class="flex justify-between items-start border-b p-3 pb-2">
-                <div class="min-w-0">
-                  <div
-                    class="font-medium text-sm truncate"
-                    title={preset.name}
-                  >
-                    {preset.name}
-                  </div>
-                  <div
-                    class="text-xs text-muted-foreground truncate"
-                    title={preset.model}
-                  >
-                    {preset.model}
-                  </div>
-                </div>
-                <div class="flex gap-1 shrink-0 ml-2">
-                  <Button
-                    variant="text"
-                    size="icon"
-                    class="h-6 w-6 text-muted-foreground hover:text-foreground"
-                    onclick={() => startEditingPreset(preset)}
-                    title="Edit Profile"
-                  >
-                    <Settings2 class="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="text"
-                    size="icon"
-                    class="h-6 w-6 text-muted-foreground hover:text-red-500"
-                    onclick={() => handleDeletePreset(preset.id)}
-                    title="Delete Profile"
-                  >
-                    <Trash2 class="h-3 w-3" />
-                  </Button>
-                </div>
+          <div class="flex justify-between items-start border-b p-3 pb-2">
+            <div class="min-w-0">
+              <div class="font-medium text-sm truncate" title={preset.name}>
+                {preset.name}
+              </div>
+              <div
+                class="text-xs text-muted-foreground truncate"
+                title={preset.model}
+              >
+                {preset.model}
+              </div>
             </div>
+            <div class="flex gap-1 shrink-0 ml-2">
+              <Button
+                variant="text"
+                size="icon"
+                class="h-6 w-6 text-muted-foreground hover:text-foreground"
+                onclick={() => startEditingPreset(preset)}
+                title="Edit Profile"
+              >
+                <Settings2 class="h-3 w-3" />
+              </Button>
+              <Button
+                variant="text"
+                size="icon"
+                class="h-6 w-6 text-muted-foreground hover:text-red-500"
+                onclick={() => handleDeletePreset(preset.id)}
+                title="Delete Profile"
+              >
+                <Trash2 class="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
 
           <Card.Content class="flex-1 flex flex-col gap-2 p-3 bg-muted/30">
             {#each getServicesForProfile(preset.id) as service (service.id)}
@@ -660,9 +690,7 @@
                   title={service.description}
                 >
                   <service.icon class="h-3 w-3 text-primary shrink-0" />
-                  <span class="text-xs truncate flex-1"
-                    >{service.label}</span
-                  >
+                  <span class="text-xs truncate flex-1">{service.label}</span>
                   <ChevronDown
                     class="h-3 w-3 text-muted-foreground ml-auto transition-transform {isTaskMenuOpen(
                       service.id,
@@ -673,9 +701,7 @@
                 </button>
 
                 {#if isTaskMenuOpen(service.id)}
-                  <div
-                    class="bg-muted/50 border-t p-1 flex flex-col gap-0.5"
-                  >
+                  <div class="bg-muted/50 border-t p-1 flex flex-col gap-0.5">
                     <div
                       class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
                     >
@@ -722,11 +748,7 @@
     <!-- Unassigned Card -->
     <Card.Root class="flex flex-col h-full border-dashed bg-muted/20">
       <div class="border-b p-3 pb-2">
-        <div
-            class="font-medium text-muted-foreground text-sm"
-        >
-            Unassigned
-        </div>
+        <div class="font-medium text-muted-foreground text-sm">Unassigned</div>
       </div>
       <Card.Content
         class="flex-1 flex flex-col gap-2 p-3 transition-all {getServicesForProfile(
@@ -752,9 +774,7 @@
               title={service.description}
             >
               <service.icon class="h-3 w-3 text-muted-foreground shrink-0" />
-              <span class="text-xs truncate flex-1"
-                >{service.label}</span
-              >
+              <span class="text-xs truncate flex-1">{service.label}</span>
               <ChevronDown
                 class="h-3 w-3 text-muted-foreground ml-auto transition-transform {isTaskMenuOpen(
                   service.id,
@@ -765,9 +785,7 @@
             </button>
 
             {#if isTaskMenuOpen(service.id)}
-              <div
-                class="bg-muted/50 border-t p-1 flex flex-col gap-0.5"
-              >
+              <div class="bg-muted/50 border-t p-1 flex flex-col gap-0.5">
                 <div
                   class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
                 >
@@ -799,4 +817,3 @@
     </Card.Root>
   </div>
 </div>
-
