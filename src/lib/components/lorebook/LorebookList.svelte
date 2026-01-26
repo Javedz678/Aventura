@@ -351,7 +351,7 @@
   </div>
 
   <!-- Entry list -->
-  <ScrollArea class="flex-1 pb-16 sm:pb-0">
+  <ScrollArea class="flex-1 pb-16 sm:pb-10">
     <div class="p-3 space-y-2">
       {#if filteredEntries.length === 0}
         {#if story.lorebookEntries.length === 0}
