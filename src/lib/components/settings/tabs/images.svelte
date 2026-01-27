@@ -49,19 +49,15 @@
   async function loadPollinationsModels() {
     const apiKey =
       settings.systemServicesSettings.imageGeneration.pollinationsApiKey;
-    
-    // Don't even try if API key is missing
-    if (!apiKey) {
-      pollinationsModelsError = "Pollinations API key is required to load models.";
-      pollinationsModels = [];
-      return;
-    }
-
     isLoadingPollinationsModels = true;
     pollinationsModelsError = null;
 
     try {
-      const provider = new PollinationsImageProvider(apiKey, false);
+      // Allow loading Pollinations models without an API key
+      const provider = new PollinationsImageProvider(
+        apiKey || undefined,
+        false,
+      );
       pollinationsModels = await provider.listModels();
     } catch (error) {
       pollinationsModelsError =
@@ -73,9 +69,12 @@
 
   // Auto-load/validate when Pollinations selected or API key changes
   $effect(() => {
-    const isPollinations = settings.systemServicesSettings.imageGeneration.imageProvider === "pollinations";
-    const apiKey = settings.systemServicesSettings.imageGeneration.pollinationsApiKey;
-    
+    const isPollinations =
+      settings.systemServicesSettings.imageGeneration.imageProvider ===
+      "pollinations";
+    const apiKey =
+      settings.systemServicesSettings.imageGeneration.pollinationsApiKey;
+
     if (isPollinations) {
       loadPollinationsModels();
     }
@@ -84,16 +83,24 @@
   // Validate selected model exists (only if models are loaded)
   $effect(() => {
     if (
-      settings.systemServicesSettings.imageGeneration.imageProvider !== "pollinations" ||
+      settings.systemServicesSettings.imageGeneration.imageProvider !==
+        "pollinations" ||
       filteredPollinationsModels.length === 0
-    ) return;
+    )
+      return;
 
     const currentModel = settings.systemServicesSettings.imageGeneration.model;
-    const modelExists = filteredPollinationsModels.some((m) => m.id === currentModel);
-    
+    const modelExists = filteredPollinationsModels.some(
+      (m) => m.id === currentModel,
+    );
+
     if (!modelExists && !isLoadingPollinationsModels) {
-      const zimageModel = filteredPollinationsModels.find((m) => m.id === "zimage");
-      settings.systemServicesSettings.imageGeneration.model = zimageModel ? "zimage" : filteredPollinationsModels[0].id;
+      const zimageModel = filteredPollinationsModels.find(
+        (m) => m.id === "zimage",
+      );
+      settings.systemServicesSettings.imageGeneration.model = zimageModel
+        ? "zimage"
+        : filteredPollinationsModels[0].id;
       settings.saveSystemServicesSettings();
     }
   });
@@ -236,7 +243,8 @@
       {#if settings.systemServicesSettings.imageGeneration.imageProvider === "pollinations"}
         <ImageModelSelect
           models={filteredPollinationsModels}
-          selectedModelId={settings.systemServicesSettings.imageGeneration.model}
+          selectedModelId={settings.systemServicesSettings.imageGeneration
+            .model}
           onModelChange={(id) => {
             settings.systemServicesSettings.imageGeneration.model = id;
             settings.saveSystemServicesSettings();

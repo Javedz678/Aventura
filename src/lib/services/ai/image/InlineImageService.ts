@@ -39,7 +39,6 @@ export interface InlineImageContext {
 }
 
 export class InlineImageGenerationService {
-  private imageProvider: ImageProvider | null = null;
 
   /**
    * Check if inline image generation is enabled and configured
@@ -65,6 +64,9 @@ export class InlineImageGenerationService {
     if (provider === 'chutes') {
       return imageSettings.chutesApiKey;
     }
+    if (provider === 'pollinations') {
+      return imageSettings.pollinationsApiKey;
+    }
     return imageSettings.nanoGptApiKey;
   }
 
@@ -78,6 +80,9 @@ export class InlineImageGenerationService {
 
     if (provider === 'chutes') {
       return new ChutesImageProvider(apiKey, DEBUG);
+    }
+    if (provider === 'pollinations') {
+      return new PollinationsImageProvider(apiKey, DEBUG);
     }
     return new NanoGPTImageProvider(apiKey, DEBUG);
   }
@@ -281,10 +286,8 @@ export class InlineImageGenerationService {
         throw new Error('No API key configured for image generation');
       }
 
-      // Create provider if needed
-      if (!this.imageProvider) {
-        this.imageProvider = this.createImageProvider();
-      }
+      // Create provider (always create fresh to ensure latest settings/key)
+      const imageProvider = this.createImageProvider();
 
       log('Generating inline image', {
         imageId,
@@ -293,7 +296,7 @@ export class InlineImageGenerationService {
       });
 
       // Generate image
-      const response = await this.imageProvider.generateImage({
+      const response = await imageProvider.generateImage({
         prompt,
         model: modelOverride || imageSettings.model,
         size: imageSettings.size,
