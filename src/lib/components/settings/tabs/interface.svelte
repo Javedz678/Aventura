@@ -1,38 +1,12 @@
 <script lang="ts">
   import { settings } from "$lib/stores/settings.svelte";
-  import type { ThemeId } from "$lib/types";
+  import { THEMES } from "../../../../themes/themes";
   import { Switch } from "$lib/components/ui/switch";
   import { Label } from "$lib/components/ui/label";
   import * as Select from "$lib/components/ui/select";
   import { Button } from "$lib/components/ui/button";
-  import { getSupportedLanguages } from "$lib/services/ai/translation";
+  import { getSupportedLanguages } from "$lib/services/ai/utils/TranslationService";
   import { Download, RefreshCw, Loader2, Languages } from "lucide-svelte";
-
-  const themes: Array<{ value: ThemeId; label: string; description: string }> =
-    [
-      { value: "dark", label: "Dark", description: "Modern dark theme" },
-      {
-        value: "light",
-        label: "Light (Paper)",
-        description: "Clean paper-like warm tones with amber accents",
-      },
-      {
-        value: "light-solarized",
-        label: "Light (Solarized)",
-        description: "Classic Solarized color scheme with cream backgrounds",
-      },
-      {
-        value: "retro-console",
-        label: "Retro Console",
-        description:
-          "CRT aesthetic inspired by PS2-era games and Serial Experiments Lain",
-      },
-      {
-        value: "fallen-down",
-        label: "Fallen Down",
-        description: "* The shadows deepen. Your adventure continues.",
-      },
-    ];
 
   const fontSizes = [
     { value: "small", label: "Small" },
@@ -48,22 +22,22 @@
     <Select.Root
       type="single"
       value={settings.uiSettings.theme}
-      onValueChange={(v) => settings.setTheme(v as ThemeId)}
+      onValueChange={(v) => settings.setTheme(v)}
     >
       <Select.Trigger class="h-10 w-full">
-        {themes.find((t) => t.value === settings.uiSettings.theme)?.label ??
+        {THEMES.find((t) => t.id === settings.uiSettings.theme)?.label ??
           "Select theme"}
       </Select.Trigger>
       <Select.Content>
-        {#each themes as theme}
-          <Select.Item value={theme.value} label={theme.label}>
+        {#each THEMES as theme}
+          <Select.Item value={theme.id} label={theme.label}>
             {theme.label}
           </Select.Item>
         {/each}
       </Select.Content>
     </Select.Root>
     <p class="mt-1 text-xs text-muted-foreground">
-      {themes.find((t) => t.value === settings.uiSettings.theme)?.description ??
+      {THEMES.find((t) => t.id === settings.uiSettings.theme)?.description ??
         ""}
     </p>
   </div>

@@ -6,7 +6,7 @@ import {
   readCharacterCardFile,
   convertCardToScenario,
 } from '$lib/services/characterCardImporter';
-import type { Genre } from '$lib/services/ai/scenario';
+import type { Genre } from '$lib/services/ai/wizard/ScenarioService';
 import { ui } from './ui.svelte';
 
 const DEBUG = true;

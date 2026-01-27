@@ -649,7 +649,8 @@ export interface APISettings {
 
 export type ReasoningEffort = 'off' | 'low' | 'medium' | 'high';
 
-export type ThemeId = 'dark' | 'light' | 'light-solarized' | 'retro-console' | 'fallen-down';
+import type { ThemeId as ThemeIdImport } from '../../themes/themes';
+export type ThemeId = ThemeIdImport;
 
 export type FontSource = 'default' | 'system' | 'google';
 

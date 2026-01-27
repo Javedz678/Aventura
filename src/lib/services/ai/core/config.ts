@@ -1,0 +1,92 @@
+/**
+ * AI Service Configuration
+ *
+ * Centralized configuration constants and logging utilities for all AI services.
+ * This replaces the scattered hardcoded values and per-service DEBUG flags.
+ */
+
+/**
+ * AI service configuration constants.
+ * These values control context window sizes, limits, and thresholds.
+ */
+export const AI_CONFIG = {
+	/** Context window sizes for different operations */
+	context: {
+		/** Number of recent entries for main narrative context */
+		recentEntriesForNarrative: 20,
+		/** Number of recent entries for tiered context building */
+		recentEntriesForTiered: 10,
+		/** Number of recent entries for classification/retrieval operations */
+		recentEntriesForRetrieval: 5,
+		/** Number of recent entries for action choices context */
+		recentEntriesForChoices: 3,
+		/** Number of user actions to analyze for style matching */
+		userActionsForStyle: 6,
+		/** Number of recent entries for lore management context */
+		recentEntriesForLoreManagement: 10,
+		/** Number of recent entries for name matching in tiered context */
+		recentEntriesForNameMatching: 3
+	},
+
+	/** Lorebook injection limits */
+	lorebook: {
+		/** Max lorebook entries for action choices */
+		maxForActionChoices: 12,
+		/** Max lorebook entries for suggestions */
+		maxForSuggestions: 15,
+		/** Max lorebook entries for agentic preview */
+		maxForAgenticPreview: 20,
+		/** Threshold for switching to LLM-based selection */
+		llmThreshold: 30,
+		/** Max entries per tier in context building */
+		maxEntriesPerTier: 10
+	},
+
+	/** Memory/chapter system defaults */
+	memory: {
+		/** Default token threshold for chapter creation */
+		defaultTokenThreshold: 24000,
+		/** Default chapter buffer (entries protected from summarization) */
+		defaultChapterBuffer: 10
+	},
+
+	/** Classifier settings */
+	classifier: {
+		/** Default chat history truncation length */
+		defaultChatHistoryTruncation: 100
+	}
+} as const;
+
+/**
+ * Debug configuration.
+ * Controls logging behavior across all AI services.
+ */
+export const DEBUG = {
+	/** Master switch for all AI service logging - enabled in dev mode only */
+	enabled: import.meta.env.DEV
+} as const;
+
+/**
+ * Creates a logger function for an AI service.
+ * Logs are only output when DEBUG.enabled is true (dev mode).
+ *
+ * @param serviceName - Name of the service (shown as prefix in logs)
+ * @returns A logging function that respects the DEBUG configuration
+ *
+ * @example
+ * const log = createLogger('Classifier');
+ * log('Processing entry', { id: entry.id }); // [Classifier] Processing entry { id: ... }
+ */
+export function createLogger(serviceName: string) {
+	const prefix = `[${serviceName}]`;
+	return (...args: unknown[]) => {
+		if (DEBUG.enabled) {
+			console.log(prefix, ...args);
+		}
+	};
+}
+
+/**
+ * Type for the logger function returned by createLogger.
+ */
+export type Logger = ReturnType<typeof createLogger>;

@@ -1,31 +1,26 @@
 import { settings } from '$lib/stores/settings.svelte';
 import { story } from '$lib/stores/story.svelte';
-import { OpenAIProvider as OpenAIProvider } from './openrouter';
+import { OpenAIProvider } from './core/OpenAIProvider';
 import { promptService, type PromptContext, type StoryMode, type POV, type Tense } from '$lib/services/prompts';
-import { ClassifierService, type ClassificationResult, type ClassificationContext, type ClassificationChatEntry } from './classifier';
-import { MemoryService, type ChapterAnalysis, type ChapterSummary, type RetrievalDecision, DEFAULT_MEMORY_CONFIG } from './memory';
-import { SuggestionsService, type StorySuggestion, type SuggestionsResult } from './suggestions';
-import { ActionChoicesService, type ActionChoice, type ActionChoicesResult } from './actionChoices';
-import { StyleReviewerService, type StyleReviewResult } from './styleReviewer';
-import { LoreManagementService, type LoreManagementSettings } from './loreManagement';
-import { AgenticRetrievalService, type AgenticRetrievalSettings, type AgenticRetrievalResult } from './agenticRetrieval';
-import { TimelineFillService, type TimelineFillSettings, type TimelineFillResult } from './timelineFill';
-import { ContextBuilder, type ContextResult, type ContextConfig, DEFAULT_CONTEXT_CONFIG } from './context';
-import { EntryRetrievalService, getEntryRetrievalConfigFromSettings, type EntryRetrievalResult, type ActivationTracker } from './entryRetrieval';
-import { ImageGenerationService, type ImageGenerationContext } from './imageGeneration';
-import { inlineImageService, type InlineImageContext } from './inlineImageGeneration';
-import { TranslationService, type TranslationResult, type UITranslationItem } from './translation';
-import { buildExtraBody } from './requestOverrides';
-import type { Message, GenerationResponse, StreamChunk } from './types';
+import { ClassifierService, type ClassificationResult, type ClassificationContext, type ClassificationChatEntry } from './generation/ClassifierService';
+import { MemoryService, type ChapterAnalysis, type ChapterSummary, type RetrievalDecision, DEFAULT_MEMORY_CONFIG } from './generation/MemoryService';
+import { SuggestionsService, type StorySuggestion, type SuggestionsResult } from './generation/SuggestionsService';
+import { ActionChoicesService, type ActionChoice, type ActionChoicesResult } from './generation/ActionChoicesService';
+import { StyleReviewerService, type StyleReviewResult } from './generation/StyleReviewerService';
+import { LoreManagementService, type LoreManagementSettings } from './lorebook/LoreManagementService';
+import { AgenticRetrievalService, type AgenticRetrievalSettings, type AgenticRetrievalResult } from './retrieval/AgenticRetrievalService';
+import { TimelineFillService, type TimelineFillSettings, type TimelineFillResult } from './retrieval/TimelineFillService';
+import { ContextBuilder, type ContextResult, type ContextConfig, DEFAULT_CONTEXT_CONFIG } from './generation/ContextBuilder';
+import { EntryRetrievalService, getEntryRetrievalConfigFromSettings, type EntryRetrievalResult, type ActivationTracker } from './retrieval/EntryRetrievalService';
+import { ImageGenerationService, type ImageGenerationContext } from './image/ImageGenerationService';
+import { inlineImageService, type InlineImageContext } from './image/InlineImageService';
+import { TranslationService, type TranslationResult, type UITranslationItem } from './utils/TranslationService';
+import { buildExtraBody } from './core/requestOverrides';
+import type { Message, GenerationResponse, StreamChunk } from './core/types';
 import type { Story, StoryEntry, Character, Location, Item, StoryBeat, Chapter, MemoryConfig, Entry, LoreManagementResult, TimeTracker } from '$lib/types';
+import { AI_CONFIG, createLogger } from './core/config';
 
-const DEBUG = true;
-
-function log(...args: any[]) {
-  if (DEBUG) {
-    console.log('[AIService]', ...args);
-  }
-}
+const log = createLogger('AIService');
 
 /**
  * Format a TimeTracker into a human-readable string for the narrative prompt.
@@ -125,7 +120,7 @@ class AIService {
     messages.push({ role: 'user', content: primingMessage });
 
     // Add recent entries as conversation history
-    const recentEntries = entries.slice(-20); // Keep last 20 entries for context
+    const recentEntries = entries.slice(-AI_CONFIG.context.recentEntriesForNarrative);
     for (const entry of recentEntries) {
       if (entry.type === 'user_action') {
         messages.push({ role: 'user', content: entry.content });
@@ -209,7 +204,7 @@ class AIService {
         const contextResult = await this.buildTieredContext(
           worldState,
           userInput,
-          entries.slice(-10), // Recent entries for name matching
+          entries.slice(-AI_CONFIG.context.recentEntriesForTiered),
           retrievedChapterContext ?? undefined
         );
         tieredContextBlock = contextResult.contextBlock;
@@ -401,50 +396,58 @@ class AIService {
   /**
    * Generate story direction suggestions for creative writing mode.
    * Per design doc section 4.2: Suggestions System
-   * @param pov - Point of view from story settings
-   * @param tense - Tense from story settings
+   * @param promptContext - Complete story context for macro expansion (preferred)
+   * @param pov - Point of view (deprecated, use promptContext)
+   * @param tense - Tense (deprecated, use promptContext)
    */
   async generateSuggestions(
     entries: StoryEntry[],
     activeThreads: StoryBeat[],
-    genre?: string | null,
     lorebookEntries?: Entry[],
+    promptContext?: PromptContext,
     pov?: POV,
     tense?: Tense
   ): Promise<SuggestionsResult> {
     log('generateSuggestions called', {
       entriesCount: entries.length,
       threadsCount: activeThreads.length,
-      genre,
+      hasPromptContext: !!promptContext,
       lorebookEntriesCount: lorebookEntries?.length ?? 0,
     });
 
     const provider = this.getProviderForProfile(settings.getPresetConfig(settings.getServicePresetId('suggestions'), 'Suggestions').profileId);
     const suggestions = new SuggestionsService(provider, settings.getServicePresetId('suggestions'));
-    return await suggestions.generateSuggestions(entries, activeThreads, genre, lorebookEntries, pov, tense);
+    return await suggestions.generateSuggestions(entries, activeThreads, lorebookEntries, promptContext, pov, tense);
   }
 
   /**
    * Generate RPG-style action choices for adventure mode.
    * Displayed after narration to give the player clear options.
+   * @param entries - Recent story entries
+   * @param worldState - Current world state (characters, locations, items, story beats)
+   * @param narrativeResponse - The latest narrative response
+   * @param lorebookEntries - Active lorebook entries
+   * @param promptContext - Complete story context for macro expansion
+   * @param pov - Point of view (deprecated, use promptContext)
    */
   async generateActionChoices(
     entries: StoryEntry[],
     worldState: WorldState,
     narrativeResponse: string,
-    pov?: 'first' | 'second' | 'third',
-    lorebookEntries?: Entry[]
+    lorebookEntries?: Entry[],
+    promptContext?: PromptContext,
+    pov?: 'first' | 'second' | 'third'
   ): Promise<ActionChoicesResult> {
     log('generateActionChoices called', {
       entriesCount: entries.length,
       narrativeLength: narrativeResponse.length,
-      pov,
+      hasPromptContext: !!promptContext,
       lorebookEntriesCount: lorebookEntries?.length ?? 0,
     });
 
     const provider = this.getProviderForProfile(settings.getPresetConfig(settings.getServicePresetId('actionChoices'), 'Action Choices').profileId);
     const actionChoices = new ActionChoicesService(provider, settings.getServicePresetId('actionChoices'));
-    return await actionChoices.generateChoices(entries, worldState, narrativeResponse, pov, lorebookEntries);
+    return await actionChoices.generateChoices(entries, worldState, narrativeResponse, lorebookEntries, promptContext, pov);
   }
 
   /**

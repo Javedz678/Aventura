@@ -6,12 +6,12 @@ import {
   scenarioService,
   type WizardData,
   type ExpandedSetting,
-  type GeneratedCharacter
-} from "$lib/services/ai/scenario";
-import { TranslationService } from "$lib/services/ai/translation";
+  type GeneratedCharacter,
+  type Genre
+} from "$lib/services/ai/wizard/ScenarioService";
+import { TranslationService } from "$lib/services/ai/utils/TranslationService";
 import { QUICK_START_SEEDS } from "$lib/services/templates";
 import { replaceUserPlaceholders } from "$lib/components/wizard/wizardTypes";
-import type { Genre } from "$lib/services/ai/scenario";
 import type { VaultScenario } from "$lib/types";
 
 // Import Modular Stores

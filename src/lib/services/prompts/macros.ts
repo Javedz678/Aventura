@@ -16,7 +16,7 @@ import type {
   VariantKey,
 } from './types';
 import { settings } from '$lib/stores/settings.svelte';
-import { getLanguageDisplayName } from '$lib/services/ai/translation';
+import { getLanguageDisplayName } from '$lib/services/ai/utils/TranslationService';
 
 /**
  * Macro expansion engine
@@ -51,6 +51,14 @@ export class MacroEngine {
    */
   removeGlobalOverride(macroId: string): void {
     this.globalOverrides = this.globalOverrides.filter(o => o.macroId !== macroId);
+  }
+
+  /**
+   * Get all global macro overrides.
+   * Used for persistence/export.
+   */
+  getGlobalOverrides(): MacroOverride[] {
+    return [...this.globalOverrides];
   }
 
   /**

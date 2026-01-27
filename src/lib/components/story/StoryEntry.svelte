@@ -18,7 +18,7 @@
     Bookmark,
     Volume2,
   } from "lucide-svelte";
-  import { aiTTSService } from "$lib/services/ai/tts";
+  import { aiTTSService } from "$lib/services/ai/utils/TTSService";
   import { parseMarkdown } from "$lib/utils/markdown";
   import { slide } from "svelte/transition";
   import {
@@ -35,8 +35,8 @@
     type ImageReadyEvent,
     type TTSQueuedEvent,
   } from "$lib/services/events";
-  import { NanoGPTImageProvider } from "$lib/services/ai/nanoGPTImageProvider";
-  import { ChutesImageProvider } from "$lib/services/ai/chutesImageProvider";
+  import { NanoGPTImageProvider } from "$lib/services/ai/image/providers/NanoGPTProvider";
+  import { ChutesImageProvider } from "$lib/services/ai/image/providers/ChutesProvider";
   import { promptService } from "$lib/services/prompts";
   import { onMount } from "svelte";
   import ReasoningBlock from "./ReasoningBlock.svelte";

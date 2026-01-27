@@ -10,7 +10,7 @@ import type {
   GeneratedCharacter,
   GeneratedOpening,
   Tense,
-} from "$lib/services/ai/scenario";
+} from "$lib/services/ai/wizard/ScenarioService";
 import type {
   LorebookImportResult,
   ImportedEntry,

@@ -10,7 +10,7 @@
   import {
     GOOGLE_TRANSLATE_LANGUAGES,
     aiTTSService,
-  } from "$lib/services/ai/tts";
+  } from "$lib/services/ai/utils/TTSService";
 
   let isPlayingPreview = $state(false);
   let isLoadingPreview = $state(false);

@@ -1,0 +1,63 @@
+/**
+ * AI Core Module
+ *
+ * Core infrastructure for AI services including:
+ * - OpenAIProvider: API client for OpenRouter/OpenAI-compatible APIs
+ * - BaseAIService: Abstract base class for all AI services
+ * - Configuration: Centralized config constants and logging
+ * - Types: All API types and interfaces
+ * - Request utilities: Extra body building, provider config
+ */
+
+// API Client
+export { OpenAIProvider, OPENROUTER_API_URL } from './OpenAIProvider';
+
+// Base service class
+export { BaseAIService, type CallLLMOptions } from './BaseAIService';
+
+// Configuration and logging
+export { AI_CONFIG, DEBUG, createLogger, type Logger } from './config';
+
+// Types
+export type {
+  AIProvider,
+  GenerationRequest,
+  GenerationResponse,
+  StreamChunk,
+  ModelInfo,
+  ProviderInfo,
+  Message,
+  AgenticRequest,
+  AgenticResponse,
+  Tool,
+  ToolCall,
+  ToolFunction,
+  ToolParameter,
+  ToolCallMessage,
+  ToolResultMessage,
+  AgenticMessage,
+  AgenticStreamChunk,
+  ReasoningDetail,
+  ReasoningDetailFormat,
+  ReasoningDetailBase,
+  ReasoningSummaryDetail,
+  ReasoningEncryptedDetail,
+  ReasoningTextDetail,
+} from './types';
+
+// Request utilities
+export {
+  buildExtraBody,
+  buildReasoningConfig,
+  buildProviderConfig,
+  parseManualBody,
+  sanitizeManualBody,
+  normalizeProviderOnly,
+  buildManualBodyDefaults,
+  serializeManualBody,
+  type ExtraBodyOptions,
+  type ManualBodyDefaults,
+} from './requestOverrides';
+
+// Provider data
+export { DEFAULT_PROVIDERS } from './providers';

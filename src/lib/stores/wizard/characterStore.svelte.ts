@@ -4,9 +4,9 @@ import {
   type Genre,
   type ExpandedSetting,
   scenarioService,
-} from "$lib/services/ai/scenario";
+} from "$lib/services/ai/wizard/ScenarioService";
 import { aiService } from "$lib/services/ai";
-import { TranslationService } from "$lib/services/ai/translation";
+import { TranslationService } from "$lib/services/ai/utils/TranslationService";
 import { settings } from "$lib/stores/settings.svelte";
 import { characterVault } from "$lib/stores/characterVault.svelte";
 import type { StoryMode, POV, VaultCharacter } from "$lib/types";

@@ -1,9 +1,9 @@
 import {
   settings
 } from "$lib/stores/settings.svelte";
-import { NanoGPTImageProvider } from "$lib/services/ai/nanoGPTImageProvider";
+import { NanoGPTImageProvider } from "$lib/services/ai/image/providers/NanoGPTProvider";
 import { promptService } from "$lib/services/prompts";
-import type { GeneratedProtagonist, GeneratedCharacter } from "$lib/services/ai/scenario";
+import type { GeneratedProtagonist, GeneratedCharacter } from "$lib/services/ai/wizard/ScenarioService";
 
 export class ImageStore {
   protagonistVisualDescriptors = $state("");

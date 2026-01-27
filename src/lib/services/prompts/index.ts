@@ -372,7 +372,7 @@ class PromptService {
 
     return {
       customMacros,
-      macroOverrides: [], // Global overrides are managed separately via setGlobalMacroOverrides
+      macroOverrides: macroEngine.getGlobalOverrides(),
       templateOverrides: this.getTemplateOverrides(),
     };
   }

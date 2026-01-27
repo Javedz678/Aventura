@@ -7,12 +7,12 @@
  */
 
 import type { StoryMode } from '$lib/types';
-import type { Genre, GeneratedCharacter } from '$lib/services/ai/scenario';
-import { OpenAIProvider } from './ai/openrouter';
+import type { Genre, GeneratedCharacter } from '$lib/services/ai/wizard/ScenarioService';
+import { OpenAIProvider } from './ai/core/OpenAIProvider';
 import { settings } from '$lib/stores/settings.svelte';
-import { buildExtraBody } from '$lib/services/ai/requestOverrides';
+import { buildExtraBody } from '$lib/services/ai/core/requestOverrides';
 import { promptService, type PromptContext } from './prompts';
-import { tryParseJsonWithHealing } from './ai/jsonHealing';
+import { tryParseJsonWithHealing } from './ai/utils/jsonHealing';
 
 const DEBUG = true;
 

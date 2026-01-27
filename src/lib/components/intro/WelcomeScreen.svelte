@@ -14,8 +14,8 @@
   } from "lucide-svelte";
   import { fade, blur, slide } from "svelte/transition";
   import { quintOut } from "svelte/easing";
-  import { getSupportedLanguages } from "$lib/services/ai/translation";
-  import type { ThemeId } from "$lib/types";
+  import { getSupportedLanguages } from "$lib/services/ai/utils/TranslationService";
+  import { THEMES } from "../../../themes/themes";
 
   import * as Card from "$lib/components/ui/card";
   import { Button } from "$lib/components/ui/button";
@@ -78,14 +78,6 @@
         "border-purple-500/20 hover:border-purple-500/50 bg-purple-500/5 hover:bg-purple-500/10",
       iconColor: "text-purple-500",
     },
-  ];
-
-  const themes: { value: ThemeId; label: string }[] = [
-    { value: "dark", label: "Dark" },
-    { value: "light", label: "Light (Paper)" },
-    { value: "light-solarized", label: "Light (Solarized)" },
-    { value: "retro-console", label: "Retro Console" },
-    { value: "fallen-down", label: "Fallen Down" },
   ];
 
   function selectProvider(id: ProviderPreset) {
@@ -185,15 +177,15 @@
               <Select.Root
                 type="single"
                 value={settings.uiSettings.theme}
-                onValueChange={(v) => settings.setTheme(v as ThemeId)}
+                onValueChange={(v) => settings.setTheme(v)}
               >
                 <Select.Trigger class="w-full">
-                  {themes.find((t) => t.value === settings.uiSettings.theme)
+                  {THEMES.find((t) => t.id === settings.uiSettings.theme)
                     ?.label ?? "Select a theme"}
                 </Select.Trigger>
                 <Select.Content>
-                  {#each themes as theme}
-                    <Select.Item value={theme.value}>{theme.label}</Select.Item>
+                  {#each THEMES as theme}
+                    <Select.Item value={theme.id}>{theme.label}</Select.Item>
                   {/each}
                 </Select.Content>
               </Select.Root>

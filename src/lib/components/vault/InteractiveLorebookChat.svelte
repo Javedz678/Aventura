@@ -6,8 +6,8 @@
     type ChatMessage,
     type ToolCallDisplay,
     type StreamEvent
-  } from '$lib/services/ai/interactiveLorebook';
-  import { OpenAIProvider } from '$lib/services/ai/openrouter';
+  } from '$lib/services/ai/lorebook/InteractiveLorebookService';
+  import { OpenAIProvider } from '$lib/services/ai/core/OpenAIProvider';
   import { settings } from '$lib/stores/settings.svelte';
   import DiffView from './DiffView.svelte';
   import {

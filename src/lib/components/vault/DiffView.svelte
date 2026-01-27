@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PendingChange } from '$lib/services/ai/interactiveLorebook';
+  import type { PendingChange } from '$lib/services/ai/lorebook/InteractiveLorebookService';
   import type { VaultLorebookEntry } from '$lib/types';
   import { Check, X, ArrowRight, Trash2, GitMerge, Plus } from 'lucide-svelte';
   import { fade } from 'svelte/transition';

@@ -9,7 +9,7 @@
     ChevronDown,
     ChevronUp,
   } from "lucide-svelte";
-  import type { StorySuggestion } from "$lib/services/ai/suggestions";
+  import type { StorySuggestion } from "$lib/services/ai/generation/SuggestionsService";
   import { swipe } from "$lib/utils/swipe";
 
   interface Props {

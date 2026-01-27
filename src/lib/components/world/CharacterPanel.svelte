@@ -20,7 +20,7 @@
     Save,
   } from "lucide-svelte";
   import type { Character } from "$lib/types";
-  import { NanoGPTImageProvider } from "$lib/services/ai/nanoGPTImageProvider";
+  import { NanoGPTImageProvider } from "$lib/services/ai/image/providers/NanoGPTProvider";
   import { promptService } from "$lib/services/prompts";
   import { normalizeImageDataUrl } from "$lib/utils/image";
   import { Button, buttonVariants } from "$lib/components/ui/button";

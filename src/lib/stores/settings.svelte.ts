@@ -4,11 +4,12 @@ import {
   type AdvancedWizardSettings,
   getDefaultAdvancedSettings,
   getDefaultAdvancedSettingsForProvider,
-} from '$lib/services/ai/scenario';
+} from '$lib/services/ai/wizard/ScenarioService';
 import { OPENROUTER_API_URL } from '$lib/services/ai/openrouter';
 import { promptService, type PromptSettings, getDefaultPromptSettings } from '$lib/services/prompts';
 import type { ReasoningEffort } from '$lib/types';
 import { ui } from '$lib/stores/ui.svelte';
+import { getTheme } from '../../themes/themes';
 
 // Provider preset types
 // 'custom' uses OpenRouter defaults but allows user to configure their own API endpoint
@@ -2246,8 +2247,9 @@ class SettingsStore {
     // Set data-theme attribute for CSS custom properties
     document.documentElement.setAttribute('data-theme', theme);
 
-    // Also maintain legacy 'dark' class for any Tailwind dark: utilities
-    if (theme === 'dark' || theme === 'retro-console' || theme === 'fallen-down') {
+    // Get theme metadata and apply dark class if needed
+    const themeMetadata = getTheme(theme);
+    if (themeMetadata?.isDark) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');

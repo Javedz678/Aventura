@@ -5,11 +5,11 @@
  */
 
 import type { Entry, EntryType, EntryInjectionMode, EntryCreator } from '$lib/types';
-import { OpenAIProvider as OpenAIProvider } from './ai/openrouter';
+import { OpenAIProvider } from './ai/core/OpenAIProvider';
 import { settings } from '$lib/stores/settings.svelte';
-import { buildExtraBody } from '$lib/services/ai/requestOverrides';
+import { buildExtraBody } from '$lib/services/ai/core/requestOverrides';
 import { promptService, type PromptContext, type StoryMode } from '$lib/services/prompts';
-import { tryParseJsonWithHealing } from './ai/jsonHealing';
+import { tryParseJsonWithHealing } from './ai/utils/jsonHealing';
 
 const DEBUG = true;
 

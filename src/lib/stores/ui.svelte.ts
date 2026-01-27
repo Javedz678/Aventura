@@ -1,10 +1,10 @@
 import type { ActivePanel, SidebarTab, UIState, EntryType, StoryEntry, Character, Location, Item, StoryBeat, Entry, ActionInputType, PersistentStyleReviewState, PersistentStyleReviewResult, TimeTracker, EmbeddedImage, PersistentCharacterSnapshot } from '$lib/types';
-import type { ActionChoice } from '$lib/services/ai/actionChoices';
-import type { StorySuggestion } from '$lib/services/ai/suggestions';
-import type { StyleReviewResult } from '$lib/services/ai/styleReviewer';
-import type { EntryRetrievalResult, ActivationTracker } from '$lib/services/ai/entryRetrieval';
+import type { ActionChoice } from '$lib/services/ai/generation/ActionChoicesService';
+import type { StorySuggestion } from '$lib/services/ai/generation/SuggestionsService';
+import type { StyleReviewResult } from '$lib/services/ai/generation/StyleReviewerService';
+import type { EntryRetrievalResult, ActivationTracker } from '$lib/services/ai/retrieval/EntryRetrievalService';
 import type { SyncMode } from '$lib/types/sync';
-import { SimpleActivationTracker } from '$lib/services/ai/entryRetrieval';
+import { SimpleActivationTracker } from '$lib/services/ai/retrieval/EntryRetrievalService';
 import { database } from '$lib/services/database';
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { StreamingHtmlRenderer } from '$lib/utils/htmlStreaming';

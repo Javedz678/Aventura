@@ -5,10 +5,10 @@
   import { settings } from "$lib/stores/settings.svelte";
   import { aiService } from "$lib/services/ai";
   import { database } from "$lib/services/database";
-  import { SimpleActivationTracker } from "$lib/services/ai/entryRetrieval";
-  import type { ImageGenerationContext } from "$lib/services/ai/imageGeneration";
-  import type { TimelineFillResult } from "$lib/services/ai/timelineFill";
-  import { TranslationService } from "$lib/services/ai/translation";
+  import { SimpleActivationTracker } from "$lib/services/ai/retrieval/EntryRetrievalService";
+  import type { ImageGenerationContext } from "$lib/services/ai/image/ImageGenerationService";
+  import type { TimelineFillResult } from "$lib/services/ai/retrieval/TimelineFillService";
+  import { TranslationService } from "$lib/services/ai/utils/TranslationService";
   import {
     Send,
     Wand2,
@@ -178,11 +178,24 @@
         (r) => r.entry,
       );
 
+      // Build complete context for macro expansion
+      const protagonist = story.characters.find((c) => c.relationship === "self");
+      const promptContext = {
+        mode: story.storyMode,
+        pov: story.pov,
+        tense: story.tense,
+        protagonistName: protagonist?.name || "the protagonist",
+        genre: story.currentStory?.genre ?? undefined,
+        settingDescription: story.currentStory?.description ?? undefined,
+        tone: story.currentStory?.settings?.tone ?? undefined,
+        themes: story.currentStory?.settings?.themes ?? undefined,
+      };
+
       const result = await aiService.generateSuggestions(
         story.entries,
         story.pendingQuests,
-        story.currentStory?.genre,
         activeLorebookEntries,
+        promptContext,
         story.pov,
         story.tense,
       );
@@ -322,12 +335,26 @@
         (r) => r.entry,
       );
 
+      // Build complete context for macro expansion
+      const protagonist = story.characters.find((c) => c.relationship === "self");
+      const promptContext = {
+        mode: story.storyMode,
+        pov: story.pov,
+        tense: story.tense,
+        protagonistName: protagonist?.name || "the protagonist",
+        genre: story.currentStory?.genre ?? undefined,
+        settingDescription: story.currentStory?.description ?? undefined,
+        tone: story.currentStory?.settings?.tone ?? undefined,
+        themes: story.currentStory?.settings?.themes ?? undefined,
+      };
+
       const result = await aiService.generateActionChoices(
         story.entries,
         worldState,
         narrativeResponse,
-        story.pov,
         activeLorebookEntries,
+        promptContext,
+        story.pov,
       );
 
       // Translate action choices if enabled

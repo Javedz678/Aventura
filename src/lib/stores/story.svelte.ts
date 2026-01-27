@@ -1,8 +1,8 @@
 import type { Story, StoryEntry, Character, Location, Item, StoryBeat, Chapter, Checkpoint, Branch, MemoryConfig, StoryMode, StorySettings, Entry, TimeTracker, EmbeddedImage, PersistentCharacterSnapshot } from '$lib/types';
 import { database } from '$lib/services/database';
 import { ui } from './ui.svelte';
-import type { ClassificationResult } from '$lib/services/ai/classifier';
-import { DEFAULT_MEMORY_CONFIG } from '$lib/services/ai/memory';
+import type { ClassificationResult } from '$lib/services/ai/generation/ClassifierService';
+import { DEFAULT_MEMORY_CONFIG } from '$lib/services/ai/generation/MemoryService';
 import { convertToEntries, type ImportedEntry } from '$lib/services/lorebookImporter';
 import { countTokens } from '$lib/services/tokenizer';
 import {
