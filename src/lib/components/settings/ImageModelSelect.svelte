@@ -124,7 +124,7 @@
 					</Select.Trigger>
 					<Select.Content>
 						{#each filteredModels as model (model.id)}
-							<Select.Item value={model.id}>
+							<Select.Item value={model.id} label={getModelLabel(model)}>
 								<div class="flex flex-col items-start gap-1">
 									<span>{getModelLabel(model)}</span>
 									{#if showDescription && model.description}
