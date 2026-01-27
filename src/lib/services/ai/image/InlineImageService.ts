@@ -15,6 +15,7 @@ import type { Character, EmbeddedImage } from '$lib/types';
 import type { ImageProvider } from './providers/base';
 import { NanoGPTImageProvider } from './providers/NanoGPTProvider';
 import { ChutesImageProvider } from './providers/ChutesProvider';
+import { PollinationsImageProvider } from './providers/PollinationsProvider';
 import { database } from '$lib/services/database';
 import { promptService } from '$lib/services/prompts';
 import { settings } from '$lib/stores/settings.svelte';
