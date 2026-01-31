@@ -149,15 +149,19 @@
             break;
 
           case 'message':
-            // Intermediate message from an iteration with tool calls
+            // Message from a completed step (each AI turn with text/tool calls)
             messages = [...messages, event.message];
 
-            // Add pending changes to the tracking list
+            // Add pending changes to the tracking list (avoid duplicates by ID)
             if (event.message.pendingChanges && event.message.pendingChanges.length > 0) {
-              pendingChanges = [...pendingChanges, ...event.message.pendingChanges];
+              const existingIds = new Set(pendingChanges.map(c => c.id));
+              const newChanges = event.message.pendingChanges.filter(c => !existingIds.has(c.id));
+              if (newChanges.length > 0) {
+                pendingChanges = [...pendingChanges, ...newChanges];
+              }
             }
 
-            // Reset state for next iteration
+            // Reset state for next step
             activeToolCalls = [];
             isThinking = true;
 
@@ -166,23 +170,9 @@
             break;
 
           case 'done':
-            // Create final assistant message
-            const assistantMsg: ChatMessage = {
-              id: crypto.randomUUID(),
-              role: 'assistant',
-              content: event.result.response,
-              timestamp: Date.now(),
-              pendingChanges: event.result.pendingChanges,
-              toolCalls: event.result.toolCalls,
-              reasoning: event.result.reasoning,
-            };
-
-            messages = [...messages, assistantMsg];
-
-            // Add new pending changes to the list
-            if (event.result.pendingChanges.length > 0) {
-              pendingChanges = [...pendingChanges, ...event.result.pendingChanges];
-            }
+            // Messages are already emitted per step via 'message' events
+            // Just ensure pending changes are tracked (may have been added via step messages)
+            // No need to create another message here to avoid duplication
             break;
 
           case 'error':

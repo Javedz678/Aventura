@@ -9,3 +9,4 @@ export * from './classifier';
 export * from './memory';
 export * from './actionchoices';
 export * from './timeline';
+export * from './lorebook';
