@@ -400,16 +400,11 @@
     const mainProfileId = settings.apiSettings.mainNarrativeProfileId;
     const mainModel = settings.apiSettings.defaultModel;
 
-    for (const preset of settings.generationPresets) {
-      const index = settings.generationPresets.findIndex((p) => p.id === preset.id);
-      if (index >= 0) {
-        settings.generationPresets[index] = {
-          ...settings.generationPresets[index],
-          profileId: mainProfileId,
-          model: mainModel,
-        };
-      }
-    }
+    settings.generationPresets = settings.generationPresets.map((preset) => ({
+      ...preset,
+      profileId: mainProfileId,
+      model: mainModel,
+    }));
     await settings.saveGenerationPresets();
   }
 
@@ -698,16 +693,12 @@
                   No API profile
                 </div>
               {:else if preset.model}
-                {@const _profile = settings.getProfile(preset.profileId || settings.getDefaultProfileIdForProvider() || "")}
-                {#if _profile}
-                  {@const _hidden = new Set(_profile.hiddenModels ?? [])}
-                  {@const _allModels = [...new Set([..._profile.fetchedModels, ..._profile.customModels])].filter(m => !_hidden.has(m))}
-                  {#if _allModels.length > 0 && !_allModels.includes(preset.model)}
-                    <div class="flex items-center gap-1 text-xs text-yellow-500 mt-0.5">
-                      <AlertTriangle class="h-3 w-3" />
-                      Model not in profile
-                    </div>
-                  {/if}
+                {@const _models = settings.getAvailableModels(preset.profileId || settings.getDefaultProfileIdForProvider())}
+                {#if _models.length > 0 && !_models.includes(preset.model)}
+                  <div class="flex items-center gap-1 text-xs text-yellow-500 mt-0.5">
+                    <AlertTriangle class="h-3 w-3" />
+                    Model not in profile
+                  </div>
                 {/if}
               {/if}
             </div>

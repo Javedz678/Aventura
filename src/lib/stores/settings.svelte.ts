@@ -1728,8 +1728,6 @@ class SettingsStore {
     const newProfile: APIProfile = {
       ...profile,
       id: crypto.randomUUID(),
-      hiddenModels: (profile as any).hiddenModels ?? [],
-      favoriteModels: (profile as any).favoriteModels ?? [],
       createdAt: Date.now(),
     };
     this.apiSettings.profiles = [...this.apiSettings.profiles, newProfile];
@@ -1900,6 +1898,19 @@ class SettingsStore {
     const profile = this.getProfile(profileId);
     if (!profile) return [];
     return [...new Set([...profile.fetchedModels, ...profile.customModels])];
+  }
+
+  getAvailableModels(profileId: string | null): string[] {
+    if (!profileId) return [];
+    const profile = this.getProfile(profileId);
+    if (!profile) return [];
+    const hidden = new Set(profile.hiddenModels ?? []);
+    const favSet = new Set(profile.favoriteModels ?? []);
+    const all = [...new Set([...profile.fetchedModels, ...profile.customModels])]
+      .filter(m => !hidden.has(m));
+    const favorites = all.filter(m => favSet.has(m));
+    const rest = all.filter(m => !favSet.has(m));
+    return [...favorites, ...rest];
   }
 
   /**

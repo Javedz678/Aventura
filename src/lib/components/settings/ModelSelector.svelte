@@ -58,18 +58,7 @@
   );
 
   // Get available models for the selected profile (excluding hidden, favorites first)
-  let availableModels = $derived.by(() => {
-    if (!effectiveProfileId) return [];
-    const profile = settings.getProfile(effectiveProfileId);
-    if (!profile) return [];
-    const hidden = new Set(profile.hiddenModels ?? []);
-    const favSet = new Set(profile.favoriteModels ?? []);
-    const all = [...new Set([...profile.fetchedModels, ...profile.customModels])]
-      .filter((m) => !hidden.has(m));
-    const favorites = all.filter((m) => favSet.has(m));
-    const rest = all.filter((m) => !favSet.has(m));
-    return [...favorites, ...rest];
-  });
+  let availableModels = $derived(settings.getAvailableModels(effectiveProfileId));
 
   // Number of favorite models (for separator)
   let favoriteCount = $derived.by(() => {
