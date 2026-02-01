@@ -94,6 +94,13 @@ export type {
   SuggestionsRefreshInput,
   SuggestionsRefreshResult,
 } from './SuggestionsRefreshService';
+
+// Pipeline event handler
+export { handleEvent } from './PipelineEventHandler';
+export type {
+  PipelineUICallbacks,
+  PipelineEventState,
+} from './PipelineEventHandler';
 export type { RetrievalDependencies, RetrievalInput } from './phases';
 export type { NarrativeDependencies, NarrativeInput, NarrativeResult } from './phases';
 export type { ClassificationDependencies, ClassificationInput, ClassificationPhaseResult } from './phases';
