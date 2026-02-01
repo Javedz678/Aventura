@@ -41,6 +41,7 @@
     BackgroundTaskCoordinator,
     WorldStateTranslationService,
     SuggestionsRefreshService,
+    handleEvent,
     type PipelineDependencies,
     type PipelineConfig,
     type GenerationContext,
@@ -53,6 +54,8 @@
     type WorldStateTranslationCallbacks,
     type SuggestionsRefreshDependencies,
     type SuggestionsRefreshInput,
+    type PipelineUICallbacks,
+    type PipelineEventState,
   } from "$lib/services/generation";
   import { InlineImageTracker } from "$lib/services/ai/image";
 
@@ -627,15 +630,38 @@
           break;
         }
 
-        await handlePipelineEvent(event, {
+        // Build state and callbacks for event handler
+        const eventState: PipelineEventState = {
           fullResponse: () => fullResponse,
-          setFullResponse: (v: string) => { fullResponse = v; },
           fullReasoning: () => fullReasoning,
-          setFullReasoning: (v: string) => { fullReasoning = v; },
           streamingEntryId,
           visualProseMode,
-          activationTracker,
-        });
+          isCreativeMode,
+          storyId: currentStoryRef.id,
+        };
+
+        const eventCallbacks: PipelineUICallbacks = {
+          startStreaming: ui.startStreaming.bind(ui),
+          appendStreamContent: ui.appendStreamContent.bind(ui),
+          appendReasoningContent: ui.appendReasoningContent.bind(ui),
+          setGenerationStatus: ui.setGenerationStatus.bind(ui),
+          setSuggestionsLoading: ui.setSuggestionsLoading.bind(ui),
+          setActionChoicesLoading: ui.setActionChoicesLoading.bind(ui),
+          setSuggestions: ui.setSuggestions.bind(ui),
+          setActionChoices: ui.setActionChoices.bind(ui),
+          emitResponseStreaming: (chunk, accumulated) => {
+            eventBus.emit<ResponseStreamingEvent>({
+              type: "ResponseStreaming",
+              chunk,
+              accumulated,
+            });
+          },
+          emitSuggestionsReady: (suggestions) => {
+            emitSuggestionsReady(suggestions);
+          },
+        };
+
+        handleEvent(event, eventState, eventCallbacks);
 
         // Accumulate narrative chunks
         if (event.type === "narrative_chunk") {
@@ -809,72 +835,6 @@
       activeAbortController = null;
       stopRequested = false;
       log("Generation complete, UI reset");
-    }
-  }
-
-  /**
-   * Handle pipeline events for UI updates
-   */
-  async function handlePipelineEvent(
-    event: GenerationEvent,
-    state: {
-      fullResponse: () => string;
-      setFullResponse: (v: string) => void;
-      fullReasoning: () => string;
-      setFullReasoning: (v: string) => void;
-      streamingEntryId: string;
-      visualProseMode: boolean;
-      activationTracker: SimpleActivationTracker;
-    },
-  ) {
-    switch (event.type) {
-      case "phase_start":
-        if (event.phase === "narrative") {
-          ui.startStreaming(state.visualProseMode, state.streamingEntryId);
-        } else if (event.phase === "classification") {
-          ui.setGenerationStatus("Classifying world state...");
-        } else if (event.phase === "post") {
-          if (isCreativeMode) {
-            ui.setSuggestionsLoading(true);
-          } else {
-            ui.setActionChoicesLoading(true);
-          }
-        }
-        break;
-
-      case "narrative_chunk":
-        if (event.content) {
-          ui.appendStreamContent(event.content);
-          eventBus.emit<ResponseStreamingEvent>({
-            type: "ResponseStreaming",
-            chunk: event.content,
-            accumulated: state.fullResponse() + event.content,
-          });
-        }
-        if (event.reasoning) {
-          ui.appendReasoningContent(event.reasoning);
-        }
-        break;
-
-      case "phase_complete":
-        if (event.phase === "retrieval") {
-          // Store lorebook retrieval result for debug panel
-          // The actual data comes from the retrieval phase internals
-        } else if (event.phase === "post") {
-          const postResult = event.result as { suggestions: any[] | null; actionChoices: any[] | null } | undefined;
-          if (postResult?.suggestions) {
-            ui.setSuggestions(postResult.suggestions, story.currentStory?.id);
-            emitSuggestionsReady(postResult.suggestions.map((s: any) => ({ text: s.text, type: s.type })));
-            ui.setSuggestionsLoading(false);
-          } else if (postResult?.actionChoices) {
-            ui.setActionChoices(postResult.actionChoices, story.currentStory?.id);
-            ui.setActionChoicesLoading(false);
-          } else {
-            ui.setSuggestionsLoading(false);
-            ui.setActionChoicesLoading(false);
-          }
-        }
-        break;
     }
   }
 
