@@ -38,6 +38,16 @@ export type { RetryBackupData as PhaseRetryBackupData, PreGenerationResult, PreG
 // Retry service
 export { RetryService, retryService } from './RetryService';
 export type { RetryBackupData, RetryStoreCallbacks, RestoreResult } from './RetryService';
+
+// Chapter service
+export { ChapterService } from './ChapterService';
+export type {
+  ChapterServiceDependencies,
+  ChapterCheckInput,
+  ChapterCreationResult,
+  ChapterAnalysisResult,
+  ChapterSummaryData,
+} from './ChapterService';
 export type { RetrievalDependencies, RetrievalInput } from './phases';
 export type { NarrativeDependencies, NarrativeInput, NarrativeResult } from './phases';
 export type { ClassificationDependencies, ClassificationInput, ClassificationPhaseResult } from './phases';
