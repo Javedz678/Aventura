@@ -17,3 +17,6 @@ export type { ClassificationDependencies, ClassificationInput, ClassificationPha
 
 export { TranslationPhase } from './TranslationPhase';
 export type { TranslationDependencies, TranslationInput, TranslationResult2 } from './TranslationPhase';
+
+export { ImagePhase } from './ImagePhase';
+export type { ImageDependencies, ImageSettings, ImageInput, ImageResult } from './ImagePhase';
