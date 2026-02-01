@@ -5,11 +5,14 @@
  * Implements three tiers of entry injection:
  * - Tier 1: Always inject (current location, present chars, inventory)
  * - Tier 2: Name matching (fuzzy match against recent input)
- * - Tier 3: LLM selection (STUBBED - awaiting SDK migration)
+ * - Tier 3: LLM selection (for large entry counts)
  */
 
 import type { Character, Location, Item, StoryBeat, StoryEntry, Chapter } from '$lib/types';
 import { createLogger, getContextConfig } from '../core/config';
+import { generateStructured } from '../sdk/generate';
+import { entitySelectionSchema } from '../sdk/schemas/context';
+import { promptService } from '$lib/services/prompts';
 
 const log = createLogger('ContextBuilder');
 
@@ -60,14 +63,16 @@ export interface ContextResult {
 
 /**
  * Service that builds context from world state using tiered injection.
- * NOTE: Tier 3 (LLM selection) has been stubbed during SDK migration.
- *       Tier 1 and Tier 2 work without AI.
+ * - Tier 1 and Tier 2 work without AI
+ * - Tier 3 uses LLM selection when entry count exceeds threshold
  */
 export class ContextBuilder {
   private config: ContextConfig;
+  private presetId: string;
 
-  constructor(config: Partial<ContextConfig> = {}) {
+  constructor(config: Partial<ContextConfig> = {}, presetId: string = 'classification') {
     this.config = { ...DEFAULT_CONTEXT_CONFIG, ...config };
+    this.presetId = presetId;
   }
 
   /**
@@ -103,17 +108,17 @@ export class ContextBuilder {
     // Get IDs in tier 1 + 2
     const tier12Ids = new Set([...tier1Ids, ...tier2.map(e => e.id)]);
 
-    // Tier 3: LLM selection - STUBBED
-    // Would normally run when entry count exceeds llmThreshold
-    const tier3: RelevantEntry[] = [];
+    // Tier 3: LLM selection - runs when entry count exceeds llmThreshold
+    let tier3: RelevantEntry[] = [];
     const remainingCount = this.countRemainingEntries(worldState, tier12Ids);
 
     if (this.config.enableLLMSelection && remainingCount > this.config.llmThreshold) {
-      log('Tier 3 LLM selection SKIPPED - awaiting SDK migration', {
+      log('Tier 3 LLM selection triggered', {
         remainingEntries: remainingCount,
         threshold: this.config.llmThreshold,
       });
-      // tier3 = await this.getTier3Entries(...) - STUBBED
+      tier3 = await this.getTier3Entries(worldState, userInput, recentEntries, tier12Ids);
+      log('Tier 3 entries:', tier3.length);
     }
 
     // Combine all entries
@@ -290,16 +295,112 @@ export class ContextBuilder {
     return entries.slice(0, this.config.maxEntriesPerTier);
   }
 
-  /* COMMENTED OUT - Tier 3 LLM selection awaiting SDK migration:
+  /**
+   * Tier 3: LLM-based selection for large entry counts.
+   * Asks the LLM to select the most relevant entries from the remaining pool.
+   */
   private async getTier3Entries(
     worldState: WorldState,
     userInput: string,
     recentEntries: StoryEntry[],
     excludeIds: Set<string>
   ): Promise<RelevantEntry[]> {
-    // ... original Tier 3 implementation ...
+    // Collect all remaining entries not in Tier 1 or 2
+    const candidates: { type: RelevantEntry['type']; id: string; name: string; description: string | null }[] = [];
+
+    for (const char of worldState.characters) {
+      if (!excludeIds.has(char.id)) {
+        candidates.push({ type: 'character', id: char.id, name: char.name, description: char.description });
+      }
+    }
+    for (const loc of worldState.locations) {
+      if (!excludeIds.has(loc.id)) {
+        candidates.push({ type: 'location', id: loc.id, name: loc.name, description: loc.description });
+      }
+    }
+    for (const item of worldState.items) {
+      if (!excludeIds.has(item.id)) {
+        candidates.push({ type: 'item', id: item.id, name: item.name, description: item.description });
+      }
+    }
+    for (const beat of worldState.storyBeats) {
+      if (!excludeIds.has(beat.id)) {
+        candidates.push({ type: 'storyBeat', id: beat.id, name: beat.title, description: beat.description });
+      }
+    }
+
+    if (candidates.length === 0) {
+      return [];
+    }
+
+    // Format entries for the prompt
+    const entrySummaries = candidates.map((e, i) =>
+      `${i}. [${e.type}] ${e.name}${e.description ? `: ${e.description.slice(0, 100)}` : ''}`
+    ).join('\n');
+
+    // Build recent content for context
+    const recentContent = recentEntries
+      .slice(-this.config.recentEntriesCount)
+      .map(e => e.content)
+      .join('\n\n');
+
+    const system = promptService.renderPrompt('tier3-entry-selection', {
+      mode: 'adventure',
+      pov: 'second',
+      tense: 'present',
+      protagonistName: '',
+    });
+
+    const prompt = promptService.renderUserPrompt('tier3-entry-selection', {
+      mode: 'adventure',
+      pov: 'second',
+      tense: 'present',
+      protagonistName: '',
+    }, {
+      recentContent,
+      userInput,
+      entrySummaries,
+    });
+
+    try {
+      const result = await generateStructured({
+        presetId: this.presetId,
+        schema: entitySelectionSchema,
+        system,
+        prompt,
+      });
+
+      // Map selected IDs back to RelevantEntry objects
+      const selectedSet = new Set(result.selectedIds);
+      const entries: RelevantEntry[] = [];
+
+      for (const candidate of candidates) {
+        // Check if selected by ID or by index (some LLMs return indices)
+        const indexStr = candidates.indexOf(candidate).toString();
+        if (selectedSet.has(candidate.id) || selectedSet.has(indexStr)) {
+          entries.push({
+            type: candidate.type,
+            id: candidate.id,
+            name: candidate.name,
+            description: candidate.description,
+            tier: 3,
+            priority: 30,
+          });
+        }
+      }
+
+      log('Tier 3 LLM selection complete', {
+        candidates: candidates.length,
+        selected: entries.length,
+        reasoning: result.reasoning,
+      });
+
+      return entries.slice(0, this.config.maxEntriesPerTier);
+    } catch (error) {
+      log('Tier 3 LLM selection failed', error);
+      return [];
+    }
   }
-  */
 
   /**
    * Check if a name fuzzy-matches against search text.

@@ -12,6 +12,9 @@ import type { Entry, EntryType, StoryEntry, Character, Location, Item, Generatio
 import { settings } from '$lib/stores/settings.svelte';
 import { buildExtraBody } from '../core/requestOverrides';
 import { createLogger, getContextConfig } from '../core/config';
+import { generateStructured } from '../sdk/generate';
+import { entitySelectionSchema } from '../sdk/schemas/context';
+import { promptService } from '$lib/services/prompts';
 
 const log = createLogger('EntryRetrieval');
 
@@ -116,8 +119,8 @@ export interface EntryRetrievalResult {
 
 /**
  * Service that retrieves relevant lorebook entries using tiered injection.
- * NOTE: Tier 3 (LLM selection) has been stubbed during SDK migration.
- *       Tier 1 and Tier 2 work without AI.
+ * - Tier 1 and Tier 2 work without AI
+ * - Tier 3 uses LLM selection for large entry counts
  */
 export class EntryRetrievalService {
   private config: EntryRetrievalConfig;
@@ -203,14 +206,15 @@ export class EntryRetrievalService {
     const remainingEntries = candidateEntries.filter(e => !tier1And2Ids.has(e.id));
     log('Remaining entries for Tier 3 LLM:', remainingEntries.length);
 
-    // Tier 3: LLM selection - STUBBED (awaiting SDK migration)
+    // Tier 3: LLM selection - runs when there are remaining entries and LLM selection is enabled
     let tier3: RetrievedEntry[] = [];
 
     if (this.config.enableLLMSelection && remainingEntries.length > 0) {
-      log('Tier 3 LLM selection SKIPPED - awaiting SDK migration', {
+      log('Tier 3 LLM selection triggered', {
         remainingEntries: remainingEntries.length,
       });
-      // tier3 = await this.getLLMSelectedEntries(...) - STUBBED
+      tier3 = await this.getLLMSelectedEntries(remainingEntries, userInput, recentStoryEntries, signal);
+      log('Tier 3 entries:', tier3.length, tier3.map(e => e.entry.name));
     }
 
     // Record activations for Tier 2 entries (for stickiness tracking)
@@ -538,16 +542,92 @@ export class EntryRetrievalService {
     };
   }
 
-  /* COMMENTED OUT - Tier 3 LLM selection awaiting SDK migration:
+  /**
+   * Tier 3: LLM-based selection for relevant lorebook entries.
+   * Asks the LLM to select the most relevant entries from the candidate pool.
+   */
   private async getLLMSelectedEntries(
     availableEntries: Entry[],
     userInput: string,
     recentStoryEntries: StoryEntry[],
     signal?: AbortSignal
   ): Promise<RetrievedEntry[]> {
-    // ... original Tier 3 implementation ...
+    if (availableEntries.length === 0) {
+      return [];
+    }
+
+    // Format entries for the prompt
+    const entrySummaries = availableEntries.map((e, i) => {
+      const desc = e.description ? e.description.slice(0, 100) : '';
+      return `${i}. [${e.type}] ${e.name}${desc ? `: ${desc}` : ''}`;
+    }).join('\n');
+
+    // Build recent content for context
+    const recentContent = recentStoryEntries
+      .slice(-this.config.recentEntriesCount)
+      .map(e => e.content)
+      .join('\n\n');
+
+    const system = promptService.renderPrompt('tier3-entry-selection', {
+      mode: 'adventure',
+      pov: 'second',
+      tense: 'present',
+      protagonistName: '',
+    });
+
+    const prompt = promptService.renderUserPrompt('tier3-entry-selection', {
+      mode: 'adventure',
+      pov: 'second',
+      tense: 'present',
+      protagonistName: '',
+    }, {
+      recentContent,
+      userInput,
+      entrySummaries,
+    });
+
+    try {
+      const result = await generateStructured({
+        presetId: this.presetId,
+        schema: entitySelectionSchema,
+        system,
+        prompt,
+        signal,
+      });
+
+      // Map selected IDs back to RetrievedEntry objects
+      const selectedSet = new Set(result.selectedIds);
+      const entries: RetrievedEntry[] = [];
+
+      for (let i = 0; i < availableEntries.length; i++) {
+        const entry = availableEntries[i];
+        // Check if selected by ID or by index (some LLMs return indices)
+        if (selectedSet.has(entry.id) || selectedSet.has(i.toString())) {
+          entries.push({
+            entry,
+            tier: 3,
+            priority: 50 + entry.injection.priority,
+            matchReason: 'LLM selected',
+          });
+        }
+      }
+
+      log('Tier 3 LLM selection complete', {
+        candidates: availableEntries.length,
+        selected: entries.length,
+        reasoning: result.reasoning,
+      });
+
+      // Apply limit if configured
+      if (this.config.maxTier3Entries > 0) {
+        return entries.slice(0, this.config.maxTier3Entries);
+      }
+      return entries;
+    } catch (error) {
+      log('Tier 3 LLM selection failed', error);
+      return [];
+    }
   }
-  */
 
   /**
    * Check if text matches in search content.
