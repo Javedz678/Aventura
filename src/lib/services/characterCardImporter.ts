@@ -3,15 +3,16 @@
  *
  * Imports SillyTavern character cards (V1/V2 JSON format) into Aventura's wizard.
  * Supports both JSON files and PNG files with embedded character data.
- *
- * STATUS: PARTIALLY STUBBED - Awaiting SDK migration
- * - PNG/JSON parsing: WORKING
- * - LLM conversion: STUBBED
  */
 
-import type { StoryMode } from '$lib/types';
+import type { StoryMode, VisualDescriptors } from '$lib/types';
 import type { Genre, GeneratedCharacter } from '$lib/services/ai/wizard/ScenarioService';
-import { settings } from '$lib/stores/settings.svelte';
+import { promptService, type PromptContext } from '$lib/services/prompts';
+import { generateStructured } from './ai/sdk/generate';
+import {
+  cardImportResultSchema,
+  vaultCharacterImportSchema,
+} from './ai/sdk/schemas/cardimport';
 import { createLogger } from './ai/core/config';
 
 const log = createLogger('CharacterCardImporter');
@@ -262,7 +263,6 @@ function buildCardContext(card: ParsedCard): string {
 
 /**
  * Convert a parsed character card into a scenario setting using LLM.
- * @throws Error - LLM conversion not implemented during SDK migration
  */
 export async function convertCardToScenario(
   jsonString: string,
@@ -290,20 +290,51 @@ export async function convertCardToScenario(
   const preprocessedFirstMessage = normalizeUserMacro(card.firstMessage);
   const preprocessedAlternateGreetings = card.alternateGreetings.map(g => normalizeUserMacro(g));
 
-  // Return a basic fallback without LLM conversion
-  const fallbackDescription = normalizeUserMacro(
-    [card.scenario, card.description].filter(s => s.trim()).join('\n\n')
-  );
+  // Build card content for LLM
+  const cardContent = buildCardContext(card);
+
+  // Minimal context for prompt rendering
+  const promptContext: PromptContext = {
+    mode,
+    pov: 'second',
+    tense: 'present',
+    protagonistName: '',
+  };
+
+  const system = promptService.renderPrompt('character-card-import', promptContext);
+  const prompt = promptService.renderUserPrompt('character-card-import', promptContext, {
+    genre,
+    title: cardTitle,
+    cardContent,
+  });
+
+  const result = await generateStructured({
+    presetId: 'classification',
+    schema: cardImportResultSchema,
+    system,
+    prompt,
+  });
+
+  // Convert LLM result to CardImportResult format
+  const npcs: GeneratedCharacter[] = result.npcs.map(npc => ({
+    name: npc.name,
+    role: npc.role,
+    description: npc.description,
+    relationship: npc.relationship,
+    traits: npc.personality.split(',').map(t => t.trim()).filter(Boolean),
+  }));
+
+  log('Card import successful', { primaryCharacter: result.primaryCharacterName, npcCount: npcs.length });
 
   return {
-    success: false,
-    settingSeed: fallbackDescription.slice(0, 2000),
-    npcs: [],
-    primaryCharacterName: cardTitle,
-    storyTitle: cardTitle,
+    success: true,
+    settingSeed: result.settingSeed,
+    npcs,
+    primaryCharacterName: result.primaryCharacterName,
+    storyTitle: result.primaryCharacterName || cardTitle,
     firstMessage: preprocessedFirstMessage,
     alternateGreetings: preprocessedAlternateGreetings,
-    errors: ['LLM conversion not implemented - awaiting SDK migration. Basic extraction was used as fallback.'],
+    errors: [],
   };
 }
 
@@ -311,12 +342,11 @@ export interface SanitizedCharacter {
   name: string;
   description: string;
   traits: string[];
-  visualDescriptors: import('$lib/types').VisualDescriptors;
+  visualDescriptors: VisualDescriptors;
 }
 
 /**
  * Sanitize a character card using LLM to extract clean character data.
- * @throws Error - LLM sanitization not implemented during SDK migration
  */
 export async function sanitizeCharacterCard(
   jsonString: string,
@@ -328,13 +358,41 @@ export async function sanitizeCharacterCard(
     return null;
   }
 
-  log('Sanitization not implemented - returning basic extraction');
+  // Build card content for LLM
+  const cardContent = buildCardContext(card);
 
-  // Return basic extraction without LLM
+  // Minimal context for prompt rendering
+  const promptContext: PromptContext = {
+    mode: 'adventure',
+    pov: 'second',
+    tense: 'present',
+    protagonistName: '',
+  };
+
+  const system = promptService.renderPrompt('vault-character-import', promptContext);
+  const prompt = promptService.renderUserPrompt('vault-character-import', promptContext, {
+    cardContent,
+  });
+
+  const result = await generateStructured({
+    presetId: 'classification',
+    schema: vaultCharacterImportSchema,
+    system,
+    prompt,
+  });
+
+  log('Character sanitization successful', { name: result.name });
+
+  // Convert array of visual descriptors to VisualDescriptors object
+  const visualDescriptors: VisualDescriptors = {};
+  result.visualDescriptors.forEach((desc, i) => {
+    visualDescriptors[`descriptor_${i}`] = desc;
+  });
+
   return {
-    name: card.name,
-    description: card.description || card.personality || '',
-    traits: [],
-    visualDescriptors: {},
+    name: result.name,
+    description: result.description,
+    traits: result.traits,
+    visualDescriptors,
   };
 }

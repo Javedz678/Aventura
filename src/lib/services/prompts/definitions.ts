@@ -2747,34 +2747,6 @@ Respond with ONLY the translated text, no explanations.`,
 };
 
 // ============================================================================
-// AGENTIC RETRY PROMPTS
-// ============================================================================
-
-/**
- * Prompt sent when the agentic retrieval agent doesn't make tool calls.
- * Used to encourage the model to continue using tools or finish.
- */
-const agenticRetrievalRetryTemplate: PromptTemplate = {
-  id: 'agentic-retrieval-retry',
-  name: 'Agentic Retrieval Retry',
-  category: 'service',
-  description: 'Prompt sent when agentic retrieval agent stops calling tools',
-  content: 'Please use the available tools to gather relevant context, or call finish_retrieval when you are done.',
-};
-
-/**
- * Prompt sent when the lore management agent doesn't make tool calls.
- * Used to encourage the model to continue using tools or finish.
- */
-const loreManagementRetryTemplate: PromptTemplate = {
-  id: 'lore-management-retry',
-  name: 'Lore Management Retry',
-  category: 'service',
-  description: 'Prompt sent when lore management agent stops calling tools',
-  content: 'Please use the available tools to make any necessary changes, or call finish_lore_management if you are done reviewing the lorebook.',
-};
-
-// ============================================================================
 // COMBINED PROMPT TEMPLATES
 // ============================================================================
 
@@ -2796,8 +2768,6 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
   loreManagementPromptTemplate,
   interactiveLorebookPromptTemplate,
   agenticRetrievalPromptTemplate,
-  agenticRetrievalRetryTemplate,
-  loreManagementRetryTemplate,
   characterCardImportPromptTemplate,
   vaultCharacterImportPromptTemplate,
   imagePromptAnalysisTemplate,

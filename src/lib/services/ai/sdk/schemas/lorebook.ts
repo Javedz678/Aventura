@@ -120,3 +120,20 @@ export const finishLoreManagementSchema = z.object({
 });
 
 export type FinishLoreManagementSchema = z.infer<typeof finishLoreManagementSchema>;
+
+/**
+ * Classification result for a single entry.
+ */
+export const entryClassificationSchema = z.object({
+  index: z.number().describe('Index of the entry being classified'),
+  type: entryTypeSchema.describe('The classified type for this entry'),
+});
+
+/**
+ * Result from lorebook-classifier template.
+ * Array of entry classifications.
+ */
+export const lorebookClassificationResultSchema = z.array(entryClassificationSchema);
+
+export type EntryClassification = z.infer<typeof entryClassificationSchema>;
+export type LorebookClassificationResult = z.infer<typeof lorebookClassificationResultSchema>;
