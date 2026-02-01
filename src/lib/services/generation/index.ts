@@ -67,6 +67,14 @@ export type {
   StyleReviewCheckInput,
   StyleReviewCheckResult,
 } from './StyleReviewScheduler';
+
+// Background task coordinator
+export { BackgroundTaskCoordinator } from './BackgroundTaskCoordinator';
+export type {
+  BackgroundTaskDependencies,
+  BackgroundTaskInput,
+  BackgroundTaskResult,
+} from './BackgroundTaskCoordinator';
 export type { RetrievalDependencies, RetrievalInput } from './phases';
 export type { NarrativeDependencies, NarrativeInput, NarrativeResult } from './phases';
 export type { ClassificationDependencies, ClassificationInput, ClassificationPhaseResult } from './phases';
