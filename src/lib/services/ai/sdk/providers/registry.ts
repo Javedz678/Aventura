@@ -6,6 +6,7 @@
  */
 
 import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createChutes } from '@chutes-ai/ai-sdk-provider';
@@ -49,7 +50,7 @@ const DEFAULT_BASE_URLS: Record<ProviderType, string | undefined> = {
  * ```typescript
  * const profile = settings.getProfile(profileId);
  * const provider = createProviderFromProfile(profile);
- * const model = provider.chat('gpt-4o');
+ * const model = provider('gpt-4o');  // All providers are callable
  *
  * const result = await generateText({ model, prompt: '...' });
  * ```
@@ -90,9 +91,11 @@ export function createProviderFromProfile(profile: APIProfile) {
 
     case 'nanogpt':
       // NanoGPT is OpenAI-compatible with custom base URL
-      return createOpenAI({
+      return createOpenAICompatible({
+        name: 'nanogpt',
         apiKey: profile.apiKey,
         baseURL: baseURL ?? NANOGPT_API_URL,
+        supportsStructuredOutputs: true,
         fetch,
       });
 

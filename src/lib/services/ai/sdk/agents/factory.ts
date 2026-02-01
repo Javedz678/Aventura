@@ -6,6 +6,7 @@
  */
 
 import { ToolLoopAgent, type StopCondition, type ToolSet, type StepResult } from 'ai';
+import type { LanguageModelV3 } from '@ai-sdk/provider';
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { settings } from '$lib/stores/settings.svelte';
 import { createProviderFromProfile } from '../providers';
@@ -22,7 +23,7 @@ export interface ResolvedAgentConfig {
   preset: GenerationPreset;
   profile: APIProfile;
   providerType: ProviderType;
-  model: ReturnType<ReturnType<typeof createProviderFromProfile>['chat']>;
+  model: LanguageModelV3;
   providerOptions: ProviderOptions | undefined;
 }
 
@@ -42,7 +43,8 @@ export function resolveAgentConfig(presetId: string): ResolvedAgentConfig {
   }
 
   const provider = createProviderFromProfile(profile);
-  const model = provider.chat(preset.model);
+  // Call provider directly - all providers support provider(modelId) syntax
+  const model = provider(preset.model) as LanguageModelV3;
   const providerOptions = buildProviderOptions(preset, profile.providerType);
 
   return { preset, profile, providerType: profile.providerType, model, providerOptions };

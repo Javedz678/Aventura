@@ -9,11 +9,12 @@ import { generateText, streamText, Output, generateImage as sdkGenerateImage } f
 import { createOpenAI } from '@ai-sdk/openai';
 import { createChutes } from '@chutes-ai/ai-sdk-provider';
 import { createPollinations } from 'ai-sdk-pollinations';
+import type { LanguageModelV3 } from '@ai-sdk/provider';
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { z } from 'zod';
 import { settings } from '$lib/stores/settings.svelte';
 import { createProviderFromProfile } from './providers';
-import { PROVIDER_CAPABILITIES, IMAGE_MODEL_DEFAULTS } from './providers/defaults';
+import { PROVIDER_CAPABILITIES } from './providers/defaults';
 import type { ProviderType, GenerationPreset, ReasoningEffort, APIProfile } from '$lib/types';
 import { createLogger } from '../core/config';
 
@@ -55,7 +56,7 @@ const PROVIDER_OPTIONS_KEY: Record<ProviderType, string> = {
   openai: 'openai',
   anthropic: 'anthropic',
   google: 'google',
-  nanogpt: 'openai',    // NanoGPT is OpenAI-compatible
+  nanogpt: 'nanogpt',
   chutes: 'chutes',
   pollinations: 'pollinations',
 };
@@ -141,7 +142,7 @@ interface ResolvedConfig {
   preset: GenerationPreset;
   profile: APIProfile;
   providerType: ProviderType;
-  model: ReturnType<ReturnType<typeof createProviderFromProfile>['chat']>;
+  model: LanguageModelV3;
   providerOptions: ProviderOptions | undefined;
 }
 
@@ -159,7 +160,8 @@ function resolveConfig(presetId: string): ResolvedConfig {
   }
 
   const provider = createProviderFromProfile(profile);
-  const model = provider.chat(preset.model);
+  // Call provider directly - all providers support provider(modelId) syntax
+  const model = provider(preset.model) as LanguageModelV3;
   const providerOptions = buildProviderOptions(preset, profile.providerType);
 
   return { preset, profile, providerType: profile.providerType, model, providerOptions };
@@ -172,7 +174,7 @@ function resolveConfig(presetId: string): ResolvedConfig {
 interface NarrativeConfig {
   profile: APIProfile;
   providerType: ProviderType;
-  model: ReturnType<ReturnType<typeof createProviderFromProfile>['chat']>;
+  model: LanguageModelV3;
   temperature: number;
   maxTokens: number;
   providerOptions: ProviderOptions | undefined;
@@ -191,7 +193,8 @@ function resolveNarrativeConfig(): NarrativeConfig {
 
   const provider = createProviderFromProfile(profile);
   const modelId = settings.apiSettings.defaultModel;
-  const model = provider.chat(modelId);
+  // Call provider directly - all providers support provider(modelId) syntax
+  const model = provider(modelId) as LanguageModelV3;
 
   // Build a minimal preset-like object for provider options
   const narrativePreset: GenerationPreset = {

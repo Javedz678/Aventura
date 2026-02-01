@@ -15,6 +15,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.29",
     "@ai-sdk/openai": "^3.0.21",
+    "@ai-sdk/openai-compatible": "^2.0.25",
     "@chutes-ai/ai-sdk-provider": "^0.1.2",
     "@openrouter/ai-sdk-provider": "^2.1.1",
     "@tauri-apps/api": "^2",
