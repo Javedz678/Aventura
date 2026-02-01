@@ -9,3 +9,6 @@ export * from './classifier';
 export * from './memory';
 export * from './actionchoices';
 export * from './timeline';
+export * from './lorebook';
+export * from './style';
+export * from './imageanalysis';

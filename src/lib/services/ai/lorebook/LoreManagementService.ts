@@ -2,31 +2,42 @@
  * Lore Management Service
  *
  * Autonomous agent that manages lorebook entries, updating and creating
- * entries based on story events.
- *
- * STATUS: STUBBED - Awaiting SDK migration
- * Original implementation preserved in comments below for reference.
+ * entries based on story events using the Vercel AI SDK ToolLoopAgent.
  */
 
-import type { Entry } from '$lib/types';
+import type { Entry, VaultLorebookEntry } from '$lib/types';
 import { createLogger } from '../core/config';
+import { createAgentFromPreset, extractTerminalToolResult, stopOnTerminalTool } from '../sdk/agents';
+import { createLorebookTools, type LorebookToolContext } from '../sdk/tools';
+import type { PendingChangeSchema, FinishLoreManagementSchema } from '../sdk/schemas/lorebook';
+import { promptService } from '$lib/services/prompts';
 
 const log = createLogger('LoreManagement');
 
-// Type definitions preserved from original
+/**
+ * Result from a lore management session.
+ */
 export interface LoreManagementResult {
   updatedEntries: Entry[];
   createdEntries: Entry[];
   reasoning?: string;
 }
 
+/**
+ * Context for running lore management.
+ */
 export interface LoreManagementContext {
   storyId: string;
   narrativeResponse: string;
   userAction: string;
   existingEntries: Entry[];
+  /** Optional chapter summaries for context */
+  chapterSummaries?: string;
 }
 
+/**
+ * Settings for lore management behavior.
+ */
 export interface LoreManagementSettings {
   enabled: boolean;
   maxIterations: number;
@@ -40,81 +51,257 @@ export function getDefaultLoreManagementSettings(): LoreManagementSettings {
 }
 
 /**
+ * Convert Entry to VaultLorebookEntry format for tool compatibility.
+ */
+function entryToVaultEntry(entry: Entry): VaultLorebookEntry {
+  return {
+    name: entry.name,
+    type: entry.type,
+    description: entry.description,
+    keywords: entry.injection.keywords,
+    injectionMode: entry.injection.mode,
+    priority: entry.injection.priority,
+    disabled: false,
+    group: null,
+  };
+}
+
+/**
  * Service that autonomously manages lorebook entries.
- * NOTE: This service has been stubbed during SDK migration.
+ * Uses ToolLoopAgent for multi-turn tool calling.
  */
 export class LoreManagementService {
   private presetId: string;
   private maxIterations: number;
 
-  constructor(presetId: string = 'loreManagement', maxIterations: number = 3) {
+  constructor(presetId: string = 'agentic', maxIterations: number = 3) {
     this.presetId = presetId;
     this.maxIterations = maxIterations;
   }
 
   /**
    * Run a lore management session to update/create entries.
-   * @throws Error - Service not implemented during SDK migration
+   *
+   * @param context - The story context for lore management
+   * @param signal - Optional abort signal for cancellation
+   * @returns Result with updated and created entries
    */
-  async runSession(context: LoreManagementContext): Promise<LoreManagementResult> {
-    throw new Error('LoreManagementService.runSession() not implemented - awaiting SDK migration');
+  async runSession(
+    context: LoreManagementContext,
+    signal?: AbortSignal
+  ): Promise<LoreManagementResult> {
+    log('Starting lore management session', {
+      storyId: context.storyId,
+      entryCount: context.existingEntries.length,
+      maxIterations: this.maxIterations,
+    });
 
-    /* COMMENTED OUT - Original implementation for reference:
-    const config = settings.getPresetConfig(this.presetId);
+    // Track pending changes - in autonomous mode, we auto-approve everything
+    const pendingChanges: PendingChangeSchema[] = [];
+    const createdEntries: Entry[] = [];
+    const updatedEntries: Entry[] = [];
+    let changeIdCounter = 0;
 
-    const promptContext: PromptContext = {
-      mode: 'adventure',
-      pov: 'second',
-      tense: 'present',
+    // Convert entries to vault format for tools
+    const vaultEntries = context.existingEntries.map(entryToVaultEntry);
+
+    // Create tool context
+    const toolContext: LorebookToolContext = {
+      entries: vaultEntries,
+      onPendingChange: (change) => {
+        // Auto-approve in autonomous mode
+        change.status = 'approved';
+        pendingChanges.push(change);
+        log('Auto-approved change', { type: change.type, id: change.id });
+      },
+      generateId: () => `lm-${++changeIdCounter}`,
+    };
+
+    // Create tools
+    const tools = createLorebookTools(toolContext);
+
+    // Build entry summaries for user prompt
+    const entrySummary = context.existingEntries
+      .map((e, i) => `${i + 1}. [${e.type}] ${e.name}: ${e.description?.slice(0, 100) || 'No description'}`)
+      .join('\n') || 'No entries yet.';
+
+    // Build recent story section
+    const recentStorySection = `# Recent Story Content
+User action: ${context.userAction}
+
+Narrative:
+${context.narrativeResponse}
+
+`;
+
+    // Get prompts from prompt service
+    const dummyContext = {
+      mode: 'adventure' as const,
+      pov: 'second' as const,
+      tense: 'present' as const,
       protagonistName: '',
     };
 
-    const systemPrompt = promptService.renderPrompt('lore-management', promptContext);
+    const systemPrompt = promptService.renderPrompt('lore-management', dummyContext);
 
-    // Build entry summaries
-    const entrySummaries = context.existingEntries.map((e, i) => {
-      return `${i + 1}. [${e.type}] ${e.name}: ${e.description?.slice(0, 100) || 'No description'}`;
-    }).join('\n');
+    const userPrompt = promptService.renderUserPrompt('lore-management', dummyContext, {
+      entrySummary,
+      recentStorySection,
+      chapterSummary: context.chapterSummaries || 'No chapter summaries available.',
+    });
 
-    const messages: Message[] = [
-      { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: `User action: ${context.userAction}\n\nNarrative:\n${context.narrativeResponse}\n\nExisting entries:\n${entrySummaries}`,
-      },
-    ];
+    // Create the agent
+    const agent = createAgentFromPreset({
+      presetId: this.presetId,
+      instructions: systemPrompt,
+      tools,
+      stopWhen: stopOnTerminalTool('finish_lore_management', this.maxIterations),
+      signal,
+    });
 
-    let iterations = 0;
-    const updatedEntries: Entry[] = [];
-    const createdEntries: Entry[] = [];
+    // Run the agent
+    const result = await agent.generate({ prompt: userPrompt });
 
-    while (iterations < this.maxIterations) {
-      iterations++;
+    // Extract the terminal result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const terminalResult = extractTerminalToolResult<FinishLoreManagementSchema & { completed: boolean }>(
+      result.steps as any,
+      'finish_lore_management'
+    );
 
-      const response = await this.provider.generateWithTools({
-        messages,
-        model: config.model,
-        temperature: config.temperature,
-        maxTokens: config.maxTokens,
-        tools: LORE_MANAGEMENT_TOOLS,
-        tool_choice: 'auto',
-        extraBody: buildExtraBody({
-          manualMode: false,
-          manualBody: config.manualBody,
-          reasoningEffort: config.reasoningEffort,
-          providerOnly: config.providerOnly,
-        }),
-      });
+    log('Lore management session completed', {
+      steps: result.steps.length,
+      pendingChanges: pendingChanges.length,
+      terminalResult,
+    });
 
-      // Process tool calls...
-      // (implementation details)
+    // Process approved changes to build result
+    // Note: In this autonomous mode, changes are captured but not actually
+    // applied to the database here - that's handled by the caller
+    for (const change of pendingChanges) {
+      if (change.status !== 'approved') continue;
 
-      if (response.finish_reason === 'stop' && !response.tool_calls?.length) {
-        break;
+      switch (change.type) {
+        case 'create':
+          if (change.entry) {
+            // Create a minimal Entry from the VaultLorebookEntry
+            const newEntry: Entry = {
+              id: `pending-${change.id}`,
+              storyId: context.storyId,
+              name: change.entry.name,
+              type: change.entry.type,
+              description: change.entry.description,
+              hiddenInfo: null,
+              aliases: [],
+              state: createDefaultState(change.entry.type),
+              adventureState: null,
+              creativeState: null,
+              injection: {
+                mode: change.entry.injectionMode,
+                keywords: change.entry.keywords,
+                priority: change.entry.priority,
+              },
+              firstMentioned: null,
+              lastMentioned: null,
+              mentionCount: 0,
+              createdBy: 'ai',
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              loreManagementBlacklisted: false,
+              branchId: null,
+            };
+            createdEntries.push(newEntry);
+          }
+          break;
+
+        case 'update':
+          if (change.index !== undefined && change.updates) {
+            const original = context.existingEntries[change.index];
+            if (original) {
+              const updated: Entry = {
+                ...original,
+                ...(change.updates.name && { name: change.updates.name }),
+                ...(change.updates.description && { description: change.updates.description }),
+                ...(change.updates.type && { type: change.updates.type }),
+                injection: {
+                  ...original.injection,
+                  ...(change.updates.injectionMode && { mode: change.updates.injectionMode }),
+                  ...(change.updates.keywords && { keywords: change.updates.keywords }),
+                  ...(change.updates.priority !== undefined && { priority: change.updates.priority }),
+                },
+                updatedAt: Date.now(),
+              };
+              updatedEntries.push(updated);
+            }
+          }
+          break;
+
+        // Delete and merge operations would need different handling
+        // depending on how the caller wants to process them
       }
     }
 
-    return { updatedEntries, createdEntries };
-    */
+    return {
+      updatedEntries,
+      createdEntries,
+      reasoning: terminalResult?.summary,
+    };
+  }
+}
+
+/**
+ * Create default state for an entry type.
+ */
+function createDefaultState(type: Entry['type']): Entry['state'] {
+  switch (type) {
+    case 'character':
+      return {
+        type: 'character',
+        isPresent: false,
+        lastSeenLocation: null,
+        currentDisposition: null,
+        relationship: { level: 0, status: 'neutral', history: [] },
+        knownFacts: [],
+        revealedSecrets: [],
+      };
+    case 'location':
+      return {
+        type: 'location',
+        isCurrentLocation: false,
+        visitCount: 0,
+        changes: [],
+        presentCharacters: [],
+        presentItems: [],
+      };
+    case 'item':
+      return {
+        type: 'item',
+        inInventory: false,
+        currentLocation: null,
+        condition: null,
+        uses: [],
+      };
+    case 'faction':
+      return {
+        type: 'faction',
+        playerStanding: 0,
+        status: 'unknown',
+        knownMembers: [],
+      };
+    case 'concept':
+      return {
+        type: 'concept',
+        revealed: false,
+        comprehensionLevel: 'unknown',
+        relatedEntries: [],
+      };
+    case 'event':
+      return {
+        type: 'event',
+        occurred: false,
+        occurredAt: null,
+        witnesses: [],
+        consequences: [],
+      };
   }
 }
