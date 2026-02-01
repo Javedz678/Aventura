@@ -58,6 +58,15 @@ export type {
   LoreManagementDependencies,
   LoreSessionResult,
 } from './LoreManagementCoordinator';
+
+// Style review scheduler
+export { StyleReviewScheduler } from './StyleReviewScheduler';
+export type {
+  StyleReviewDependencies,
+  StyleReviewUICallbacks,
+  StyleReviewCheckInput,
+  StyleReviewCheckResult,
+} from './StyleReviewScheduler';
 export type { RetrievalDependencies, RetrievalInput } from './phases';
 export type { NarrativeDependencies, NarrativeInput, NarrativeResult } from './phases';
 export type { ClassificationDependencies, ClassificationInput, ClassificationPhaseResult } from './phases';
