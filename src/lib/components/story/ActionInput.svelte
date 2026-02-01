@@ -22,10 +22,6 @@
     ImageIcon,
     Loader2,
   } from "lucide-svelte";
-  import {
-    hasDescriptors,
-    descriptorsToString,
-  } from "$lib/utils/visualDescriptors";
   import Suggestions from "./Suggestions.svelte";
   import GrammarCheck from "./GrammarCheck.svelte";
   import { Button } from "$lib/components/ui/button";
@@ -43,6 +39,7 @@
     GenerationPipeline,
     retryService,
     BackgroundTaskCoordinator,
+    WorldStateTranslationService,
     type PipelineDependencies,
     type PipelineConfig,
     type GenerationContext,
@@ -51,6 +48,8 @@
     type RetryBackupData,
     type BackgroundTaskDependencies,
     type BackgroundTaskInput,
+    type WorldStateTranslationDependencies,
+    type WorldStateTranslationCallbacks,
   } from "$lib/services/generation";
   import { InlineImageTracker } from "$lib/services/ai/image";
 
@@ -452,6 +451,25 @@
     };
   }
 
+  /**
+   * Build dependencies and callbacks for WorldStateTranslationService.
+   */
+  function buildWorldStateTranslationDependencies(): WorldStateTranslationDependencies {
+    return {
+      translateUIElements: aiService.translateUIElements.bind(aiService),
+    };
+  }
+
+  function buildWorldStateTranslationCallbacks(): WorldStateTranslationCallbacks {
+    return {
+      updateCharacter: (id, data) => database.updateCharacter(id, data as any),
+      updateLocation: (id, data) => database.updateLocation(id, data as any),
+      updateItem: (id, data) => database.updateItem(id, data as any),
+      updateStoryBeat: (id, data) => database.updateStoryBeat(id, data as any),
+      refreshWorldState: story.refreshWorldState.bind(story),
+    };
+  }
+
   // Get protagonist name for third person POV
   const protagonistName = $derived.by(
     () =>
@@ -692,9 +710,28 @@
           }
 
           // Translate world state elements (non-blocking)
-          translateWorldStateElements(event.result).catch((err) =>
-            log("World state translation failed (non-fatal)", err),
-          );
+          const translationSettings = settings.translationSettings;
+          if (TranslationService.shouldTranslateWorldState(translationSettings)) {
+            const translationService = new WorldStateTranslationService(buildWorldStateTranslationDependencies());
+            translationService.translateEntities(
+              {
+                classificationResult: {
+                  newCharacters: event.result.entryUpdates.newCharacters,
+                  newLocations: event.result.entryUpdates.newLocations,
+                  newItems: event.result.entryUpdates.newItems,
+                  newStoryBeats: event.result.entryUpdates.newStoryBeats,
+                },
+                worldState: {
+                  characters: story.characters,
+                  locations: story.locations,
+                  items: story.items,
+                  storyBeats: story.storyBeats,
+                },
+                targetLanguage: translationSettings.targetLanguage,
+              },
+              buildWorldStateTranslationCallbacks(),
+            ).catch((err) => log("World state translation failed (non-fatal)", err));
+          }
         }
 
         // Handle translation result - save to DB
@@ -851,73 +888,6 @@
         }
         break;
     }
-  }
-
-  /**
-   * Translate world state elements from classification result (background)
-   */
-  async function translateWorldStateElements(classificationResult: any) {
-    const translationSettings = settings.translationSettings;
-    if (!TranslationService.shouldTranslateWorldState(translationSettings)) return;
-
-    const targetLang = translationSettings.targetLanguage;
-    const itemsToTranslate: { id: string; text: string; type: "name" | "description" | "title"; entityType: string; field: string; isArray?: boolean }[] = [];
-
-    // Collect items from classification result
-    for (const char of classificationResult.entryUpdates.newCharacters) {
-      const dbChar = story.characters.find((c) => c.name === char.name);
-      if (dbChar) {
-        itemsToTranslate.push({ id: `${dbChar.id}:name`, text: char.name, type: "name", entityType: "character", field: "translatedName" });
-        if (char.description) itemsToTranslate.push({ id: `${dbChar.id}:desc`, text: char.description, type: "description", entityType: "character", field: "translatedDescription" });
-        if (char.relationship) itemsToTranslate.push({ id: `${dbChar.id}:rel`, text: char.relationship, type: "description", entityType: "character", field: "translatedRelationship" });
-        if (char.traits?.length) itemsToTranslate.push({ id: `${dbChar.id}:traits`, text: char.traits.join(", "), type: "description", entityType: "character", field: "translatedTraits", isArray: true });
-        if (hasDescriptors(char.visualDescriptors)) itemsToTranslate.push({ id: `${dbChar.id}:visual`, text: descriptorsToString(char.visualDescriptors), type: "description", entityType: "character", field: "translatedVisualDescriptors" });
-      }
-    }
-    for (const loc of classificationResult.entryUpdates.newLocations) {
-      const dbLoc = story.locations.find((l) => l.name === loc.name);
-      if (dbLoc) {
-        itemsToTranslate.push({ id: `${dbLoc.id}:name`, text: loc.name, type: "name", entityType: "location", field: "translatedName" });
-        if (loc.description) itemsToTranslate.push({ id: `${dbLoc.id}:desc`, text: loc.description, type: "description", entityType: "location", field: "translatedDescription" });
-      }
-    }
-    for (const item of classificationResult.entryUpdates.newItems) {
-      const dbItem = story.items.find((i) => i.name === item.name);
-      if (dbItem) {
-        itemsToTranslate.push({ id: `${dbItem.id}:name`, text: item.name, type: "name", entityType: "item", field: "translatedName" });
-        if (item.description) itemsToTranslate.push({ id: `${dbItem.id}:desc`, text: item.description, type: "description", entityType: "item", field: "translatedDescription" });
-      }
-    }
-    for (const beat of classificationResult.entryUpdates.newStoryBeats) {
-      const dbBeat = story.storyBeats.find((b) => b.title === beat.title);
-      if (dbBeat) {
-        itemsToTranslate.push({ id: `${dbBeat.id}:title`, text: beat.title, type: "title", entityType: "storyBeat", field: "translatedTitle" });
-        if (beat.description) itemsToTranslate.push({ id: `${dbBeat.id}:desc`, text: beat.description, type: "description", entityType: "storyBeat", field: "translatedDescription" });
-      }
-    }
-
-    if (itemsToTranslate.length === 0) return;
-
-    log("Translating world state elements", { count: itemsToTranslate.length, targetLang });
-    const uiItems = itemsToTranslate.map((item) => ({ id: item.id, text: item.text, type: item.type }));
-    const translated = await aiService.translateUIElements(uiItems, targetLang);
-
-    for (const translatedItem of translated) {
-      const [entityId] = translatedItem.id.split(":");
-      const originalItem = itemsToTranslate.find((i) => i.id === translatedItem.id);
-      if (!originalItem) continue;
-
-      const translatedValue = originalItem.isArray ? translatedItem.text.split(",").map((s) => s.trim()).filter(Boolean) : translatedItem.text;
-      const updateData: Record<string, string | string[] | null> = { [originalItem.field]: translatedValue, translationLanguage: targetLang };
-
-      if (originalItem.entityType === "character") await database.updateCharacter(entityId, updateData as any);
-      else if (originalItem.entityType === "location") await database.updateLocation(entityId, updateData as any);
-      else if (originalItem.entityType === "item") await database.updateItem(entityId, updateData as any);
-      else if (originalItem.entityType === "storyBeat") await database.updateStoryBeat(entityId, updateData as any);
-    }
-
-    await story.refreshWorldState();
-    log("World state elements translated", { count: translated.length });
   }
 
   async function handleSubmit() {
