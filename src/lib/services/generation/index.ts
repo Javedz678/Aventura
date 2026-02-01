@@ -48,6 +48,16 @@ export type {
   ChapterAnalysisResult,
   ChapterSummaryData,
 } from './ChapterService';
+
+// Lore management coordinator
+export { LoreManagementCoordinator } from './LoreManagementCoordinator';
+export type {
+  LoreManagementCallbacks,
+  LoreManagementUICallbacks,
+  LoreSessionInput,
+  LoreManagementDependencies,
+  LoreSessionResult,
+} from './LoreManagementCoordinator';
 export type { RetrievalDependencies, RetrievalInput } from './phases';
 export type { NarrativeDependencies, NarrativeInput, NarrativeResult } from './phases';
 export type { ClassificationDependencies, ClassificationInput, ClassificationPhaseResult } from './phases';
