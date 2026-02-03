@@ -12,6 +12,7 @@ export {
   hasDefaultEndpoint,
   getProviderList,
   type ProviderConfig,
+  type ProviderServices,
   type ServiceModelDefaults,
   type ProviderCapabilities,
   type ImageDefaults,

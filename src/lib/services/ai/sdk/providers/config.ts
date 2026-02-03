@@ -29,6 +29,16 @@ export interface ImageDefaults {
   supportedSizes: string[];
 }
 
+export interface ProviderServices {
+  narrative: ServiceModelDefaults;
+  classification: ServiceModelDefaults;
+  memory: ServiceModelDefaults;
+  suggestions: ServiceModelDefaults;
+  agentic: ServiceModelDefaults;
+  wizard: ServiceModelDefaults;
+  translation: ServiceModelDefaults;
+}
+
 export interface ProviderConfig {
   name: string;
   description: string;
@@ -37,15 +47,8 @@ export interface ProviderConfig {
   capabilities: ProviderCapabilities;
   imageDefaults?: ImageDefaults;
   fallbackModels: string[];
-  services: {
-    narrative: ServiceModelDefaults;
-    classification: ServiceModelDefaults;
-    memory: ServiceModelDefaults;
-    suggestions: ServiceModelDefaults;
-    agentic: ServiceModelDefaults;
-    wizard: ServiceModelDefaults;
-    translation: ServiceModelDefaults;
-  };
+  /** Service model defaults. Only some providers (openrouter, nanogpt) have preconfigured defaults. */
+  services?: ProviderServices;
 }
 
 // ============================================================================
@@ -98,15 +101,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     capabilities: { textGeneration: true, imageGeneration: true, structuredOutput: true },
     imageDefaults: { defaultModel: 'z-image-turbo', referenceModel: 'qwen-image-edit-2511', supportedSizes: ['576x576', '1024x1024', '2048x2048'] },
     fallbackModels: ['deepseek-ai/DeepSeek-V3-0324', 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8'],
-    services: {
-      narrative: { model: 'deepseek-ai/DeepSeek-V3-0324', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'deepseek-ai/DeepSeek-V3-0324', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'deepseek-ai/DeepSeek-V3-0324', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'deepseek-ai/DeepSeek-V3-0324', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'deepseek-ai/DeepSeek-V3-0324', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'deepseek-ai/DeepSeek-V3-0324', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'deepseek-ai/DeepSeek-V3-0324', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   pollinations: {
@@ -117,15 +112,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     capabilities: { textGeneration: true, imageGeneration: true, structuredOutput: false },
     imageDefaults: { defaultModel: 'flux', referenceModel: 'kontext', supportedSizes: ['512x512', '1024x1024', '2048x2048'] },
     fallbackModels: ['openai', 'mistral', 'llama'],
-    services: {
-      narrative: { model: 'openai', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'openai', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'openai', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'openai', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'openai', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'openai', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'openai', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   ollama: {
@@ -135,15 +122,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: false,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: true },
     fallbackModels: ['llama3.2', 'llama3.1', 'mistral', 'codellama', 'qwen2.5', 'phi3', 'gemma2'],
-    services: {
-      narrative: { model: 'llama3.2', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'llama3.2', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'llama3.2', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'llama3.2', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'llama3.2', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'llama3.2', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'llama3.2', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   lmstudio: {
@@ -153,15 +132,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: false,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: false },
     fallbackModels: ['loaded-model'],
-    services: {
-      narrative: { model: 'loaded-model', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'loaded-model', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'loaded-model', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'loaded-model', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'loaded-model', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'loaded-model', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'loaded-model', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   llamacpp: {
@@ -171,15 +142,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: false,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: false },
     fallbackModels: ['loaded-model'],
-    services: {
-      narrative: { model: 'loaded-model', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'loaded-model', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'loaded-model', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'loaded-model', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'loaded-model', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'loaded-model', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'loaded-model', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   'nvidia-nim': {
@@ -189,15 +152,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: true,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: true },
     fallbackModels: ['meta/llama-3.1-70b-instruct', 'meta/llama-3.1-8b-instruct', 'nvidia/llama-3.1-nemotron-70b-instruct'],
-    services: {
-      narrative: { model: 'meta/llama-3.1-70b-instruct', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'meta/llama-3.1-8b-instruct', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'meta/llama-3.1-8b-instruct', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'meta/llama-3.1-8b-instruct', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'meta/llama-3.1-70b-instruct', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'meta/llama-3.1-8b-instruct', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'meta/llama-3.1-8b-instruct', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   'openai-compatible': {
@@ -207,15 +162,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: false,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: false },
     fallbackModels: ['default'],
-    services: {
-      narrative: { model: 'default', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'default', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'default', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'default', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'default', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'default', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'default', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   openai: {
@@ -226,15 +173,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     capabilities: { textGeneration: true, imageGeneration: true, structuredOutput: true },
     imageDefaults: { defaultModel: 'dall-e-3', referenceModel: 'dall-e-2', supportedSizes: ['1024x1024', '1024x1792', '1792x1024'] },
     fallbackModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1', 'o1-mini'],
-    services: {
-      narrative: { model: 'gpt-4o', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'gpt-4o-mini', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'gpt-4o-mini', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'gpt-4o-mini', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'gpt-4o', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'gpt-4o-mini', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'gpt-4o-mini', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   anthropic: {
@@ -244,15 +183,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: true,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: true },
     fallbackModels: ['claude-opus-4-5-20251101', 'claude-haiku-4-5-20251001', 'claude-sonnet-4-5-20250929', 'claude-opus-4-1-20250805', 'claude-sonnet-4-20250514', 'claude-opus-4-20250514'],
-    services: {
-      narrative: { model: 'claude-sonnet-4-20250514', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'claude-haiku-4-20250514', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'claude-haiku-4-20250514', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'claude-haiku-4-20250514', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'claude-sonnet-4-20250514', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'claude-haiku-4-20250514', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'claude-haiku-4-20250514', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   google: {
@@ -263,15 +194,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     capabilities: { textGeneration: true, imageGeneration: true, structuredOutput: true },
     imageDefaults: { defaultModel: 'imagen-3.0-generate-002', referenceModel: 'imagen-3.0-generate-002', supportedSizes: ['512x512', '1024x1024'] },
     fallbackModels: ['gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
-    services: {
-      narrative: { model: 'gemini-2.0-flash', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'gemini-2.0-flash', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'gemini-2.0-flash', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'gemini-2.0-flash', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'gemini-2.0-flash', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'gemini-2.0-flash', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'gemini-2.0-flash', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   xai: {
@@ -281,15 +204,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: true,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: true },
     fallbackModels: ['grok-3', 'grok-3-fast', 'grok-2', 'grok-2-vision'],
-    services: {
-      narrative: { model: 'grok-3', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'grok-3-fast', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'grok-3-fast', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'grok-3-fast', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'grok-3', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'grok-3-fast', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'grok-3-fast', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   groq: {
@@ -299,15 +214,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: true,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: true },
     fallbackModels: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
-    services: {
-      narrative: { model: 'llama-3.3-70b-versatile', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'llama-3.1-8b-instant', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'llama-3.1-8b-instant', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'llama-3.1-8b-instant', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'llama-3.3-70b-versatile', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'llama-3.1-8b-instant', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'llama-3.1-8b-instant', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   zhipu: {
@@ -318,15 +225,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     capabilities: { textGeneration: true, imageGeneration: true, structuredOutput: true },
     imageDefaults: { defaultModel: 'cogview-3-plus', referenceModel: 'cogview-3', supportedSizes: ['512x512', '1024x1024'] },
     fallbackModels: ['glm-4-plus', 'glm-4-flash', 'glm-4-air', 'glm-4v', 'glm-4v-plus', 'cogview-3-plus'],
-    services: {
-      narrative: { model: 'glm-4-plus', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'glm-4-flash', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'glm-4-flash', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'glm-4-flash', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'glm-4-plus', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'glm-4-flash', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'glm-4-flash', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   deepseek: {
@@ -336,15 +235,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: true,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: true },
     fallbackModels: ['deepseek-chat', 'deepseek-reasoner'],
-    services: {
-      narrative: { model: 'deepseek-chat', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'deepseek-chat', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'deepseek-chat', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'deepseek-chat', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'deepseek-chat', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'deepseek-chat', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'deepseek-chat', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 
   mistral: {
@@ -354,15 +245,7 @@ export const PROVIDERS: Record<ProviderType, ProviderConfig> = {
     requiresApiKey: true,
     capabilities: { textGeneration: true, imageGeneration: false, structuredOutput: true },
     fallbackModels: ['mistral-large-latest', 'mistral-small-latest', 'codestral-latest', 'pixtral-large-latest', 'ministral-8b-latest', 'ministral-3b-latest'],
-    services: {
-      narrative: { model: 'mistral-large-latest', temperature: 0.8, maxTokens: 8192, reasoningEffort: 'off' },
-      classification: { model: 'mistral-small-latest', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      memory: { model: 'mistral-small-latest', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      suggestions: { model: 'mistral-small-latest', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      agentic: { model: 'mistral-large-latest', temperature: 0.3, maxTokens: 8192, reasoningEffort: 'off' },
-      wizard: { model: 'mistral-small-latest', temperature: 0.7, maxTokens: 8192, reasoningEffort: 'off' },
-      translation: { model: 'mistral-small-latest', temperature: 0.3, maxTokens: 4096, reasoningEffort: 'off' },
-    },
+    // No service defaults - user must configure models in Generation Settings
   },
 };
 

@@ -920,7 +920,11 @@ export function getDefaultSystemServicesSettingsForProvider(provider: ProviderTy
  * @param provider - The provider type to get defaults for
  */
 export function getDefaultGenerationPresetsForProvider(provider: ProviderType): GenerationPreset[] {
-  const defaults = PROVIDERS[provider];
+  const config = PROVIDERS[provider];
+  const services = config.services;
+
+  // For providers without service defaults, use empty model (requires manual configuration)
+  const emptyServiceDefault = { model: '', temperature: 0.5, maxTokens: 8192, reasoningEffort: 'off' as const };
 
   return [
     {
@@ -928,10 +932,10 @@ export function getDefaultGenerationPresetsForProvider(provider: ProviderType): 
       name: 'Classification',
       description: 'World state, lorebook parsing, entity extraction',
       profileId: null,
-      model: defaults.services.classification.model,
-      temperature: defaults.services.classification.temperature,
-      maxTokens: defaults.services.classification.maxTokens,
-      reasoningEffort: defaults.services.classification.reasoningEffort,
+      model: services?.classification.model ?? emptyServiceDefault.model,
+      temperature: services?.classification.temperature ?? 0.3,
+      maxTokens: services?.classification.maxTokens ?? emptyServiceDefault.maxTokens,
+      reasoningEffort: services?.classification.reasoningEffort ?? emptyServiceDefault.reasoningEffort,
       manualBody: ''
     },
     {
@@ -939,10 +943,10 @@ export function getDefaultGenerationPresetsForProvider(provider: ProviderType): 
       name: 'Memory & Context',
       description: 'Chapter analysis, timeline, context retrieval',
       profileId: null,
-      model: defaults.services.memory.model,
-      temperature: defaults.services.memory.temperature,
-      maxTokens: defaults.services.memory.maxTokens,
-      reasoningEffort: defaults.services.memory.reasoningEffort,
+      model: services?.memory.model ?? emptyServiceDefault.model,
+      temperature: services?.memory.temperature ?? 0.3,
+      maxTokens: services?.memory.maxTokens ?? emptyServiceDefault.maxTokens,
+      reasoningEffort: services?.memory.reasoningEffort ?? emptyServiceDefault.reasoningEffort,
       manualBody: ''
     },
     {
@@ -950,10 +954,10 @@ export function getDefaultGenerationPresetsForProvider(provider: ProviderType): 
       name: 'Suggestions',
       description: 'Plot suggestions, action choices, style review',
       profileId: null,
-      model: defaults.services.suggestions.model,
-      temperature: defaults.services.suggestions.temperature,
-      maxTokens: defaults.services.suggestions.maxTokens,
-      reasoningEffort: defaults.services.suggestions.reasoningEffort,
+      model: services?.suggestions.model ?? emptyServiceDefault.model,
+      temperature: services?.suggestions.temperature ?? 0.7,
+      maxTokens: services?.suggestions.maxTokens ?? emptyServiceDefault.maxTokens,
+      reasoningEffort: services?.suggestions.reasoningEffort ?? emptyServiceDefault.reasoningEffort,
       manualBody: ''
     },
     {
@@ -961,10 +965,10 @@ export function getDefaultGenerationPresetsForProvider(provider: ProviderType): 
       name: 'Agentic',
       description: 'Autonomous lore management and retrieval',
       profileId: null,
-      model: defaults.services.agentic.model,
-      temperature: defaults.services.agentic.temperature,
-      maxTokens: defaults.services.agentic.maxTokens,
-      reasoningEffort: defaults.services.agentic.reasoningEffort,
+      model: services?.agentic.model ?? emptyServiceDefault.model,
+      temperature: services?.agentic.temperature ?? 0.3,
+      maxTokens: services?.agentic.maxTokens ?? emptyServiceDefault.maxTokens,
+      reasoningEffort: services?.agentic.reasoningEffort ?? emptyServiceDefault.reasoningEffort,
       manualBody: ''
     },
     {
@@ -972,10 +976,10 @@ export function getDefaultGenerationPresetsForProvider(provider: ProviderType): 
       name: 'Story Wizard',
       description: 'Story setup, character and setting generation',
       profileId: null,
-      model: defaults.services.wizard.model,
-      temperature: defaults.services.wizard.temperature,
-      maxTokens: defaults.services.wizard.maxTokens,
-      reasoningEffort: defaults.services.wizard.reasoningEffort,
+      model: services?.wizard.model ?? emptyServiceDefault.model,
+      temperature: services?.wizard.temperature ?? 0.7,
+      maxTokens: services?.wizard.maxTokens ?? emptyServiceDefault.maxTokens,
+      reasoningEffort: services?.wizard.reasoningEffort ?? emptyServiceDefault.reasoningEffort,
       manualBody: ''
     },
     {
@@ -983,10 +987,10 @@ export function getDefaultGenerationPresetsForProvider(provider: ProviderType): 
       name: 'Translation',
       description: 'Text translation between languages',
       profileId: null,
-      model: defaults.services.translation.model,
-      temperature: defaults.services.translation.temperature,
-      maxTokens: defaults.services.translation.maxTokens,
-      reasoningEffort: defaults.services.translation.reasoningEffort,
+      model: services?.translation.model ?? emptyServiceDefault.model,
+      temperature: services?.translation.temperature ?? 0.3,
+      maxTokens: services?.translation.maxTokens ?? 4096,
+      reasoningEffort: services?.translation.reasoningEffort ?? emptyServiceDefault.reasoningEffort,
       manualBody: ''
     }
   ];
@@ -2497,8 +2501,9 @@ class SettingsStore {
     const activeProfileId = preserveApiSettings ? this.apiSettings.activeProfileId : null;
     const mainNarrativeProfileId = preserveApiSettings ? this.apiSettings.mainNarrativeProfileId : null;
 
-    const defaultNarrativeModel = defaults.services.narrative.model;
-    const defaultReasoningEffort = defaults.services.narrative.reasoningEffort;
+    // For providers without service defaults, use empty model (requires manual configuration)
+    const defaultNarrativeModel = defaults.services?.narrative.model ?? '';
+    const defaultReasoningEffort = defaults.services?.narrative.reasoningEffort ?? 'off';
 
     // Reset API settings (except URL/key/profiles if preserving)
     this.apiSettings = {
@@ -2637,11 +2642,11 @@ class SettingsStore {
     this.apiSettings.openaiApiURL = defaultApiURL;
     this.apiSettings.openaiApiKey = apiKey;
 
-    // Set provider-specific defaults
-    this.apiSettings.defaultModel = defaults.services.narrative.model;
-    this.apiSettings.temperature = defaults.services.narrative.temperature;
-    this.apiSettings.maxTokens = defaults.services.narrative.maxTokens;
-    this.apiSettings.reasoningEffort = defaults.services.narrative.reasoningEffort;
+    // Set provider-specific defaults (empty model for providers without preconfigured defaults)
+    this.apiSettings.defaultModel = defaults.services?.narrative.model ?? '';
+    this.apiSettings.temperature = defaults.services?.narrative.temperature ?? 0.8;
+    this.apiSettings.maxTokens = defaults.services?.narrative.maxTokens ?? 8192;
+    this.apiSettings.reasoningEffort = defaults.services?.narrative.reasoningEffort ?? 'off';
     this.apiSettings.manualBody = '';
     this.apiSettings.enableThinking = false;
     await database.setSetting('default_model', this.apiSettings.defaultModel);

@@ -674,17 +674,24 @@
                 {preset.name}
               </div>
               <div
-                class="text-xs text-muted-foreground truncate"
-                title={preset.model}
+                class="text-xs truncate"
+                class:text-muted-foreground={preset.model}
+                class:text-destructive={!preset.model}
+                title={preset.model || 'Model not configured'}
               >
-                {preset.model}
+                {preset.model || 'NEED TO SET MODEL'}
               </div>
-              {#if preset.profileId && !settings.getProfile(preset.profileId)}
+              {#if !preset.model}
+                <div class="flex items-center gap-1 text-xs text-destructive mt-0.5">
+                  <AlertCircle class="h-3 w-3" />
+                  Click to configure
+                </div>
+              {:else if preset.profileId && !settings.getProfile(preset.profileId)}
                 <div class="flex items-center gap-1 text-xs text-destructive mt-0.5">
                   <AlertCircle class="h-3 w-3" />
                   No API profile
                 </div>
-              {:else if preset.model}
+              {:else}
                 {@const _models = settings.getAvailableModels(preset.profileId || settings.getDefaultProfileIdForProvider())}
                 {#if _models.length > 0 && !_models.includes(preset.model)}
                   <div class="flex items-center gap-1 text-xs text-yellow-500 mt-0.5">

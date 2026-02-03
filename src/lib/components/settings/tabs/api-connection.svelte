@@ -2,7 +2,10 @@
   import { settings } from "$lib/stores/settings.svelte";
   import type { APIProfile, ProviderType } from "$lib/types";
   import { fetchModelsFromProvider } from "$lib/services/ai/sdk/providers";
-  import { PROVIDERS, hasDefaultEndpoint } from "$lib/services/ai/sdk/providers/config";
+  import {
+    PROVIDERS,
+    hasDefaultEndpoint,
+  } from "$lib/services/ai/sdk/providers/config";
   import ProviderTypeSelector from "$lib/components/settings/ProviderTypeSelector.svelte";
   import {
     Plus,
@@ -76,12 +79,16 @@
     try {
       const u = new URL(url);
       const host = u.hostname;
-      return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host.startsWith('192.168.');
+      return (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host === "0.0.0.0" ||
+        host.startsWith("192.168.")
+      );
     } catch {
       return false;
     }
   }
-
 
   // Sort models: favorites first, then rest alphabetically
   function sortedModels(models: string[]): string[] {
@@ -191,7 +198,7 @@
       const models = await fetchModelsFromProvider(
         formProviderType,
         formBaseUrl,
-        formApiKey
+        formApiKey,
       );
       formFetchedModels = models;
     } catch (err) {
@@ -229,7 +236,10 @@
 
   function handleRestoreHiddenModel(model: string) {
     formHiddenModels = formHiddenModels.filter((m) => m !== model);
-    if (!formFetchedModels.includes(model) && !formCustomModels.includes(model)) {
+    if (
+      !formFetchedModels.includes(model) &&
+      !formCustomModels.includes(model)
+    ) {
       formFetchedModels = [...formFetchedModels, model];
     }
   }
@@ -262,7 +272,6 @@
       settings.setDefaultProfile(profileId);
     }
   }
-
 
   function handleOpenChange(open: boolean, profile: APIProfile) {
     if (open) {
@@ -379,6 +388,17 @@
             }}
           />
 
+          {#if !PROVIDERS[formProviderType].services}
+            <Alert class="border-yellow-500/50 bg-yellow-500/10">
+              <AlertCircle class="h-4 w-4 text-yellow-500" />
+              <AlertDescription class="text-xs">
+                This provider requires manual model configuration. After
+                creating this profile, go to the <strong>Generation</strong> tab
+                to set models for each service.
+              </AlertDescription>
+            </Alert>
+          {/if}
+
           {#if formProviderType === "openai-compatible"}
             <div class="space-y-2">
               <Label for="new-url">
@@ -395,15 +415,23 @@
             <div class="space-y-1">
               <button
                 class="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                onclick={() => showBaseUrlCollapsible = !showBaseUrlCollapsible}
+                onclick={() =>
+                  (showBaseUrlCollapsible = !showBaseUrlCollapsible)}
               >
-                <ChevronRight class="h-3 w-3 transition-transform {showBaseUrlCollapsible || formBaseUrl ? 'rotate-90' : ''}" />
-                Custom Base URL <span class="text-muted-foreground">(optional)</span>
+                <ChevronRight
+                  class="h-3 w-3 transition-transform {showBaseUrlCollapsible ||
+                  formBaseUrl
+                    ? 'rotate-90'
+                    : ''}"
+                />
+                Custom Base URL
+                <span class="text-muted-foreground">(optional)</span>
               </button>
               {#if showBaseUrlCollapsible || formBaseUrl}
                 <Input
                   id="new-url"
-                  placeholder={PROVIDERS[formProviderType].baseUrl || "https://api.example.com/v1"}
+                  placeholder={PROVIDERS[formProviderType].baseUrl ||
+                    "https://api.example.com/v1"}
                   bind:value={formBaseUrl}
                   class="font-mono text-xs"
                 />
@@ -416,7 +444,9 @@
 
           <div class="space-y-2">
             <Input
-              label={isSelfHostedUrl(formBaseUrl) ? "API Key (optional)" : "API Key"}
+              label={isSelfHostedUrl(formBaseUrl)
+                ? "API Key (optional)"
+                : "API Key"}
               id="new-key"
               type="password"
               placeholder="sk-..."
@@ -438,7 +468,10 @@
               <Button
                 variant="outline"
                 size="sm"
-                onclick={() => { showCustomModelDialog = true; customModelDialogInput = ""; }}
+                onclick={() => {
+                  showCustomModelDialog = true;
+                  customModelDialogInput = "";
+                }}
               >
                 <Plus class="h-3 w-3" />
                 {isMobileDevice() ? "" : "Custom"}
@@ -447,7 +480,8 @@
                 variant="outline"
                 size="sm"
                 onclick={handleFetchModels}
-                disabled={isFetchingModels || (!formBaseUrl && !hasDefaultEndpoint(formProviderType))}
+                disabled={isFetchingModels ||
+                  (!formBaseUrl && !hasDefaultEndpoint(formProviderType))}
               >
                 {#if isFetchingModels}
                   <RefreshCw class="h-4 w-4 animate-spin" />
@@ -526,7 +560,8 @@
           >
           <Button
             onclick={handleSave}
-            disabled={!formName.trim() || (formProviderType === "openai-compatible" && !formBaseUrl.trim())}
+            disabled={!formName.trim() ||
+              (formProviderType === "openai-compatible" && !formBaseUrl.trim())}
             class="flex-1"
           >
             <Check class="h-4 w-4" />
@@ -582,7 +617,9 @@
                     variant="outline"
                     class="text-xs text-muted-foreground"
                   >
-                    {profile.customModels.length + profile.fetchedModels.length - (profile.hiddenModels?.length ?? 0)}
+                    {profile.customModels.length +
+                      profile.fetchedModels.length -
+                      (profile.hiddenModels?.length ?? 0)}
                     models
                   </Badge>
                 </div>
@@ -595,7 +632,11 @@
                 showDelete={settings.canDeleteProfile(profile.id)}
               >
                 {#if profile.id === settings.getDefaultProfileIdForProvider()}
-                  <Badge variant="default" class="shrink-0 text-xs md:hidden" title="Used when agent profiles don't specify an API profile">
+                  <Badge
+                    variant="default"
+                    class="shrink-0 text-xs md:hidden"
+                    title="Used when agent profiles don't specify an API profile"
+                  >
                     Fallback
                   </Badge>
                 {/if}
@@ -640,7 +681,7 @@
                   value={formProviderType}
                   onchange={(v) => {
                     formProviderType = v;
-                    formName = providerDisplayNames[v];
+                    formName = PROVIDERS[v].name;
                     formBaseUrl = "";
                     formFetchedModels = [];
                     formCustomModels = [];
@@ -652,10 +693,23 @@
                   }}
                 />
 
+                {#if !PROVIDERS[formProviderType].services}
+                  <Alert class="border-yellow-500/50 bg-yellow-500/10">
+                    <AlertCircle class="h-4 w-4 text-yellow-500" />
+                    <AlertDescription class="text-xs">
+                      This provider requires manual model configuration. Go to
+                      the <strong>Generation</strong> tab to set models for each
+                      service.
+                    </AlertDescription>
+                  </Alert>
+                {/if}
+
                 {#if formProviderType === "openai-compatible"}
                   <div class="flex flex-col">
                     <Label class="mb-2">
-                      Base URL <span class="text-muted-foreground text-xs">(required)</span>
+                      Base URL <span class="text-muted-foreground text-xs"
+                        >(required)</span
+                      >
                     </Label>
                     <Input
                       bind:value={formBaseUrl}
@@ -667,15 +721,23 @@
                   <div class="flex flex-col">
                     <button
                       class="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors mb-1"
-                      onclick={() => showBaseUrlCollapsible = !showBaseUrlCollapsible}
+                      onclick={() =>
+                        (showBaseUrlCollapsible = !showBaseUrlCollapsible)}
                     >
-                      <ChevronRight class="h-3 w-3 transition-transform {showBaseUrlCollapsible || formBaseUrl ? 'rotate-90' : ''}" />
-                      Custom Base URL <span class="text-muted-foreground">(optional)</span>
+                      <ChevronRight
+                        class="h-3 w-3 transition-transform {showBaseUrlCollapsible ||
+                        formBaseUrl
+                          ? 'rotate-90'
+                          : ''}"
+                      />
+                      Custom Base URL
+                      <span class="text-muted-foreground">(optional)</span>
                     </button>
                     {#if showBaseUrlCollapsible || formBaseUrl}
                       <Input
                         bind:value={formBaseUrl}
-                        placeholder={PROVIDERS[formProviderType].baseUrl || "https://api.example.com/v1"}
+                        placeholder={PROVIDERS[formProviderType].baseUrl ||
+                          "https://api.example.com/v1"}
                         class="font-mono text-xs"
                       />
                       <p class="text-xs text-muted-foreground mt-1">
@@ -687,7 +749,9 @@
 
                 <div class="space-y-2">
                   <Input
-                    label={isSelfHostedUrl(formBaseUrl) ? "API Key (optional)" : "API Key"}
+                    label={isSelfHostedUrl(formBaseUrl)
+                      ? "API Key (optional)"
+                      : "API Key"}
                     type="password"
                     placeholder="sk-..."
                     bind:value={formApiKey}
@@ -705,7 +769,10 @@
                       <Button
                         variant="outline"
                         size="sm"
-                        onclick={() => { showCustomModelDialog = true; customModelDialogInput = ""; }}
+                        onclick={() => {
+                          showCustomModelDialog = true;
+                          customModelDialogInput = "";
+                        }}
                       >
                         <Plus class="h-3 w-3" />
                         {isMobileDevice() ? "" : "Custom"}
@@ -714,7 +781,9 @@
                         variant="outline"
                         size="sm"
                         onclick={handleFetchModels}
-                        disabled={isFetchingModels || (!formBaseUrl && !hasDefaultEndpoint(formProviderType))}
+                        disabled={isFetchingModels ||
+                          (!formBaseUrl &&
+                            !hasDefaultEndpoint(formProviderType))}
                       >
                         {#if isFetchingModels}
                           <RefreshCw class="h-3 w-3 animate-spin" />
@@ -738,12 +807,12 @@
 
                   <!-- Model filter -->
                   {#if formFetchedModels.length + formCustomModels.length > 10}
-                    <div class="relative mt-2">
-                      <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                    <div class="my-2">
                       <Input
                         placeholder="Filter models..."
                         bind:value={modelFilterInput}
-                        class="pl-7 h-7 text-xs"
+                        leftIcon={Search}
+                        class="text-xs"
                       />
                     </div>
                   {/if}
@@ -759,17 +828,25 @@
                             {@const isFav = formFavoriteModels.includes(model)}
                             <Badge variant="secondary" class="gap-1 pr-0.5">
                               <button
-                                class="p-0 hover:text-yellow-500 transition-colors {isFav ? 'text-yellow-500' : 'text-muted-foreground'}"
+                                class="p-0 hover:text-yellow-500 transition-colors {isFav
+                                  ? 'text-yellow-500'
+                                  : 'text-muted-foreground'}"
                                 onclick={() => handleToggleFavorite(model)}
-                                title={isFav ? "Remove from favorites" : "Add to favorites"}
+                                title={isFav
+                                  ? "Remove from favorites"
+                                  : "Add to favorites"}
                               >
-                                <Star class="h-3 w-3" fill={isFav ? "currentColor" : "none"} />
+                                <Star
+                                  class="h-3 w-3"
+                                  fill={isFav ? "currentColor" : "none"}
+                                />
                               </button>
                               <span class="max-w-48 truncate">{model}</span>
                               {#if !isFav}
                                 <button
                                   class="p-0 hover:text-destructive transition-colors text-muted-foreground"
-                                  onclick={() => handleRemoveFetchedModel(model)}
+                                  onclick={() =>
+                                    handleRemoveFetchedModel(model)}
                                   title="Hide model"
                                 >
                                   <X class="h-3 w-3" />
@@ -793,11 +870,18 @@
                             {@const isFav = formFavoriteModels.includes(model)}
                             <Badge variant="outline" class="gap-1 pr-0.5">
                               <button
-                                class="p-0 hover:text-yellow-500 transition-colors {isFav ? 'text-yellow-500' : 'text-muted-foreground'}"
+                                class="p-0 hover:text-yellow-500 transition-colors {isFav
+                                  ? 'text-yellow-500'
+                                  : 'text-muted-foreground'}"
                                 onclick={() => handleToggleFavorite(model)}
-                                title={isFav ? "Remove from favorites" : "Add to favorites"}
+                                title={isFav
+                                  ? "Remove from favorites"
+                                  : "Add to favorites"}
                               >
-                                <Star class="h-3 w-3" fill={isFav ? "currentColor" : "none"} />
+                                <Star
+                                  class="h-3 w-3"
+                                  fill={isFav ? "currentColor" : "none"}
+                                />
                               </button>
                               <span class="max-w-48 truncate">{model}</span>
                               {#if !isFav}
@@ -820,20 +904,30 @@
                     <div class="space-y-1">
                       <button
                         class="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                        onclick={() => showHiddenModels = !showHiddenModels}
+                        onclick={() => (showHiddenModels = !showHiddenModels)}
                       >
-                        <ChevronRight class="h-3 w-3 transition-transform {showHiddenModels ? 'rotate-90' : ''}" />
+                        <ChevronRight
+                          class="h-3 w-3 transition-transform {showHiddenModels
+                            ? 'rotate-90'
+                            : ''}"
+                        />
                         Hidden Models ({formHiddenModels.length})
                       </button>
                       {#if showHiddenModels}
-                        <ScrollArea class="h-24 w-full rounded-md border border-dashed">
+                        <ScrollArea
+                          class="h-24 w-full rounded-md border border-dashed"
+                        >
                           <div class="flex flex-wrap gap-1 p-2">
                             {#each filterModels(formHiddenModels) as model}
-                              <Badge variant="outline" class="gap-1 pr-1 opacity-60">
+                              <Badge
+                                variant="outline"
+                                class="gap-1 pr-1 opacity-60"
+                              >
                                 <span class="max-w-48 truncate">{model}</span>
                                 <button
                                   class="p-0 hover:text-primary transition-colors text-muted-foreground"
-                                  onclick={() => handleRestoreHiddenModel(model)}
+                                  onclick={() =>
+                                    handleRestoreHiddenModel(model)}
                                   title="Restore model"
                                 >
                                   <RotateCcw class="h-3 w-3" />
@@ -848,7 +942,10 @@
                 </div>
 
                 <!-- Custom Model Dialog -->
-                <Dialog.Root open={showCustomModelDialog} onOpenChange={(open) => showCustomModelDialog = open}>
+                <Dialog.Root
+                  open={showCustomModelDialog}
+                  onOpenChange={(open) => (showCustomModelDialog = open)}
+                >
                   <Dialog.Content class="sm:max-w-md">
                     <Dialog.Header>
                       <Dialog.Title>Add Custom Model</Dialog.Title>
@@ -861,11 +958,15 @@
                         placeholder="model-name or provider/model"
                         bind:value={customModelDialogInput}
                         class="flex-1"
-                        onkeydown={(e) => e.key === "Enter" && handleAddCustomModelFromDialog()}
+                        onkeydown={(e) =>
+                          e.key === "Enter" && handleAddCustomModelFromDialog()}
                       />
                     </div>
                     <Dialog.Footer>
-                      <Button variant="outline" onclick={() => showCustomModelDialog = false}>
+                      <Button
+                        variant="outline"
+                        onclick={() => (showCustomModelDialog = false)}
+                      >
                         Cancel
                       </Button>
                       <Button
@@ -882,19 +983,25 @@
               <!-- Read-only View -->
               <div class="space-y-4 border-t bg-muted/10 mt-2 p-4">
                 <div class="grid gap-1">
-                  <Label class="text-muted-foreground text-xs">Profile Name</Label>
+                  <Label class="text-muted-foreground text-xs"
+                    >Profile Name</Label
+                  >
                   <div class="font-medium">{profile.name}</div>
                 </div>
 
                 <div class="grid gap-1">
                   <Label class="text-muted-foreground text-xs">Provider</Label>
-                  <div class="font-medium capitalize">{profile.providerType}</div>
+                  <div class="font-medium capitalize">
+                    {profile.providerType}
+                  </div>
                 </div>
 
                 <div class="grid gap-1">
                   <Label class="text-muted-foreground text-xs">Base URL</Label>
                   <div class="font-mono text-sm bg-muted p-2 rounded truncate">
-                    {profile.baseUrl || PROVIDERS[profile.providerType].baseUrl || "(default)"}
+                    {profile.baseUrl ||
+                      PROVIDERS[profile.providerType].baseUrl ||
+                      "(default)"}
                   </div>
                 </div>
 
@@ -964,5 +1071,4 @@
       </Card>
     {/if}
   </div>
-
 </div>
