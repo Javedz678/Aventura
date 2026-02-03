@@ -2,55 +2,47 @@
  * Provider Defaults Configuration
  *
  * Defines default models and settings for each provider type.
- * Used when creating presets, resetting to defaults, or first-time setup.
  */
 
 import type { ProviderType, ReasoningEffort } from '$lib/types';
 
-/**
- * OpenRouter API URL constant.
- * Used throughout the app for OpenRouter-based profiles.
- */
-export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1';
+// ============================================================================
+// API URLs
+// ============================================================================
 
-/**
- * NanoGPT API URL constant.
- */
+export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1';
 export const NANOGPT_API_URL = 'https://nano-gpt.com/api/v1';
 
-/**
- * Provider capabilities - what each provider supports.
- */
+// ============================================================================
+// Provider Capabilities
+// ============================================================================
+
 export interface ProviderCapabilities {
   supportsTextGeneration: boolean;
   supportsImageGeneration: boolean;
+  supportsStructuredOutput: boolean;
 }
 
-/**
- * Provider capabilities lookup.
- */
 export const PROVIDER_CAPABILITIES: Record<ProviderType, ProviderCapabilities> = {
-  openrouter:   { supportsTextGeneration: true,  supportsImageGeneration: false },
-  openai:       { supportsTextGeneration: true,  supportsImageGeneration: true },
-  anthropic:    { supportsTextGeneration: true,  supportsImageGeneration: false },
-  google:       { supportsTextGeneration: true,  supportsImageGeneration: true },
-  nanogpt:      { supportsTextGeneration: true,  supportsImageGeneration: true },
-  chutes:       { supportsTextGeneration: true,  supportsImageGeneration: true },
-  pollinations: { supportsTextGeneration: true,  supportsImageGeneration: true },
+  openrouter:   { supportsTextGeneration: true,  supportsImageGeneration: false, supportsStructuredOutput: true },
+  openai:       { supportsTextGeneration: true,  supportsImageGeneration: true,  supportsStructuredOutput: true },
+  anthropic:    { supportsTextGeneration: true,  supportsImageGeneration: false, supportsStructuredOutput: true },
+  google:       { supportsTextGeneration: true,  supportsImageGeneration: true,  supportsStructuredOutput: true },
+  nanogpt:      { supportsTextGeneration: true,  supportsImageGeneration: true,  supportsStructuredOutput: false },
+  chutes:       { supportsTextGeneration: true,  supportsImageGeneration: true,  supportsStructuredOutput: true },
+  pollinations: { supportsTextGeneration: true,  supportsImageGeneration: true,  supportsStructuredOutput: false },
 };
 
-/**
- * Image model defaults for providers that support image generation.
- */
+// ============================================================================
+// Image Model Defaults
+// ============================================================================
+
 export interface ImageModelDefaults {
   defaultModel: string;
-  referenceModel: string;  // Model that supports image-to-image
+  referenceModel: string;
   supportedSizes: string[];
 }
 
-/**
- * Image model defaults per provider.
- */
 export const IMAGE_MODEL_DEFAULTS: Partial<Record<ProviderType, ImageModelDefaults>> = {
   openai: {
     defaultModel: 'dall-e-3',
@@ -79,9 +71,10 @@ export const IMAGE_MODEL_DEFAULTS: Partial<Record<ProviderType, ImageModelDefaul
   },
 };
 
-/**
- * Default model configuration for a service category.
- */
+// ============================================================================
+// Service Defaults
+// ============================================================================
+
 export interface ServiceModelDefaults {
   model: string;
   temperature: number;
@@ -89,33 +82,18 @@ export interface ServiceModelDefaults {
   reasoningEffort: ReasoningEffort;
 }
 
-/**
- * All service defaults for a provider.
- */
 export interface ProviderDefaults {
-  /** Provider display name */
   name: string;
-  /** Default base URL (empty = use SDK default) */
   baseUrl: string;
-  /** Default model for main narrative generation */
   narrative: ServiceModelDefaults;
-  /** Default model for classification tasks (world state, entity extraction) */
   classification: ServiceModelDefaults;
-  /** Default model for memory/context tasks (summarization, retrieval) */
   memory: ServiceModelDefaults;
-  /** Default model for suggestions/creative tasks */
   suggestions: ServiceModelDefaults;
-  /** Default model for agentic tasks (tool-calling, autonomous) */
   agentic: ServiceModelDefaults;
-  /** Default model for wizard/generation tasks */
   wizard: ServiceModelDefaults;
-  /** Default model for translation */
   translation: ServiceModelDefaults;
 }
 
-/**
- * Provider-specific default configurations.
- */
 export const PROVIDER_DEFAULTS: Record<ProviderType, ProviderDefaults> = {
   openrouter: {
     name: 'OpenRouter',

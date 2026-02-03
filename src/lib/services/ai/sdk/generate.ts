@@ -5,52 +5,53 @@
  * Uses explicit provider selection from APIProfile.providerType.
  */
 
-import { extractJsonMiddleware, generateText, streamText, Output, generateImage as sdkGenerateImage, wrapLanguageModel } from 'ai';
+import {
+  extractJsonMiddleware,
+  generateText,
+  streamText,
+  Output,
+  generateImage as sdkGenerateImage,
+  wrapLanguageModel,
+} from 'ai';
+import type { LanguageModelV3, LanguageModelV3Middleware } from '@ai-sdk/provider';
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createChutes } from '@chutes-ai/ai-sdk-provider';
 import { createPollinations } from 'ai-sdk-pollinations';
-import type { LanguageModelV3 } from '@ai-sdk/provider';
-import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { jsonrepair } from 'jsonrepair';
 import type { z } from 'zod';
+
 import { settings } from '$lib/stores/settings.svelte';
-import { createProviderFromProfile } from './providers';
-import { PROVIDER_CAPABILITIES } from './providers/defaults';
 import type { ProviderType, GenerationPreset, ReasoningEffort, APIProfile } from '$lib/types';
 import { createLogger } from '../core/config';
+import { createProviderFromProfile } from './providers';
+import { PROVIDER_CAPABILITIES } from './providers/defaults';
+import { promptSchemaMiddleware, patchResponseMiddleware, loggingMiddleware } from './middleware';
 
 const log = createLogger('Generate');
-
-// JSON-compatible types for provider options
-type JSONValue = null | string | number | boolean | JSONObject | JSONValue[];
-type JSONObject = { [key: string]: JSONValue | undefined };
 
 // ============================================================================
 // Types
 // ============================================================================
 
+type JSONValue = null | string | number | boolean | JSONObject | JSONValue[];
+type JSONObject = { [key: string]: JSONValue | undefined };
+
 interface BaseGenerateOptions {
-  /** Preset ID (e.g., 'suggestions', 'classifier') */
   presetId: string;
-  /** System prompt */
   system: string;
-  /** User prompt */
   prompt: string;
-  /** Optional abort signal for cancellation */
   signal?: AbortSignal;
 }
 
 interface GenerateObjectOptions<T extends z.ZodType> extends BaseGenerateOptions {
-  /** Zod schema for output validation */
   schema: T;
 }
 
 // ============================================================================
-// Provider Options Builder
+// Provider Options
 // ============================================================================
 
-/**
- * Map provider types to their providerOptions key in the AI SDK.
- */
 const PROVIDER_OPTIONS_KEY: Record<ProviderType, string> = {
   openrouter: 'openrouter',
   openai: 'openai',
@@ -61,58 +62,46 @@ const PROVIDER_OPTIONS_KEY: Record<ProviderType, string> = {
   pollinations: 'pollinations',
 };
 
-/**
- * Convert reasoning effort level to token budget for Anthropic.
- */
-function effortToBudget(effort: ReasoningEffort): number {
-  const budgets: Record<ReasoningEffort, number> = {
-    off: 0,
-    low: 4000,
-    medium: 8000,
-    high: 16000,
-  };
-  return budgets[effort] ?? 8000;
-}
+const ANTHROPIC_REASONING_BUDGETS: Record<ReasoningEffort, number> = {
+  off: 0,
+  low: 4000,
+  medium: 8000,
+  high: 16000,
+};
 
 /**
  * Build provider-specific options from preset settings.
- * Uses explicit providerType from profile.
  */
 export function buildProviderOptions(
   preset: GenerationPreset,
   providerType: ProviderType
 ): ProviderOptions | undefined {
   const options: JSONObject = {};
-  const providerKey = PROVIDER_OPTIONS_KEY[providerType];
 
-  // Reasoning configuration (provider-specific format)
   if (preset.reasoningEffort && preset.reasoningEffort !== 'off') {
     switch (providerType) {
       case 'openrouter':
-        // OpenRouter: { reasoning: { effort: 'low'|'medium'|'high' } }
         options.reasoning = { effort: preset.reasoningEffort };
         break;
       case 'openai':
-        // OpenAI (o1 models): { reasoningEffort: 'low'|'medium'|'high' }
         options.reasoningEffort = preset.reasoningEffort;
         break;
       case 'anthropic':
-        // Anthropic: { thinking: { type: 'enabled', budgetTokens: N } }
-        options.thinking = { type: 'enabled', budgetTokens: effortToBudget(preset.reasoningEffort) };
-        break;
-      case 'google':
-        // Google: No reasoning support yet
+        options.thinking = {
+          type: 'enabled',
+          budgetTokens: ANTHROPIC_REASONING_BUDGETS[preset.reasoningEffort] ?? 8000,
+        };
         break;
     }
   }
 
-  // Manual body params (top_p, top_k, penalties, etc.)
   if (preset.manualBody) {
     try {
       const manual = JSON.parse(preset.manualBody) as JSONObject;
+      const reservedKeys = ['messages', 'tools', 'tool_choice', 'stream', 'model'];
       if (manual && typeof manual === 'object' && !Array.isArray(manual)) {
         for (const [key, value] of Object.entries(manual)) {
-          if (!['messages', 'tools', 'tool_choice', 'stream', 'model'].includes(key)) {
+          if (!reservedKeys.includes(key)) {
             options[key] = value;
           }
         }
@@ -126,6 +115,7 @@ export function buildProviderOptions(
     return undefined;
   }
 
+  const providerKey = PROVIDER_OPTIONS_KEY[providerType];
   return { [providerKey]: options } as ProviderOptions;
 }
 
@@ -139,12 +129,18 @@ interface ResolvedConfig {
   providerType: ProviderType;
   model: LanguageModelV3;
   providerOptions: ProviderOptions | undefined;
+  supportsStructuredOutput: boolean;
 }
 
-/**
- * Resolve preset → profile → model.
- * This is the single place where we go from presetId to a ready-to-use model.
- */
+interface NarrativeConfig {
+  profile: APIProfile;
+  providerType: ProviderType;
+  model: LanguageModelV3;
+  temperature: number;
+  maxTokens: number;
+  providerOptions: ProviderOptions | undefined;
+}
+
 function resolveConfig(presetId: string): ResolvedConfig {
   const preset = settings.getPresetConfig(presetId);
   const profileId = preset.profileId ?? settings.apiSettings.mainNarrativeProfileId;
@@ -155,30 +151,19 @@ function resolveConfig(presetId: string): ResolvedConfig {
   }
 
   const provider = createProviderFromProfile(profile);
-  // Call provider directly - all providers support provider(modelId) syntax
   const model = provider(preset.model) as LanguageModelV3;
-  const providerOptions = buildProviderOptions(preset, profile.providerType);
+  const capabilities = PROVIDER_CAPABILITIES[profile.providerType];
 
-  return { preset, profile, providerType: profile.providerType, model, providerOptions };
+  return {
+    preset,
+    profile,
+    providerType: profile.providerType,
+    model,
+    providerOptions: buildProviderOptions(preset, profile.providerType),
+    supportsStructuredOutput: capabilities?.supportsStructuredOutput ?? true,
+  };
 }
 
-/**
- * Resolved config for main narrative profile.
- * Uses settings from apiSettings directly.
- */
-interface NarrativeConfig {
-  profile: APIProfile;
-  providerType: ProviderType;
-  model: LanguageModelV3;
-  temperature: number;
-  maxTokens: number;
-  providerOptions: ProviderOptions | undefined;
-}
-
-/**
- * Resolve config from the main narrative profile.
- * Uses apiSettings.defaultModel, temperature, and maxTokens directly.
- */
 function resolveNarrativeConfig(): NarrativeConfig {
   const profile = settings.getMainNarrativeProfile();
 
@@ -188,10 +173,8 @@ function resolveNarrativeConfig(): NarrativeConfig {
 
   const provider = createProviderFromProfile(profile);
   const modelId = settings.apiSettings.defaultModel;
-  // Call provider directly - all providers support provider(modelId) syntax
   const model = provider(modelId) as LanguageModelV3;
 
-  // Build a minimal preset-like object for provider options
   const narrativePreset: GenerationPreset = {
     id: '_narrative',
     name: 'Narrative',
@@ -201,10 +184,8 @@ function resolveNarrativeConfig(): NarrativeConfig {
     temperature: settings.apiSettings.temperature,
     maxTokens: settings.apiSettings.maxTokens,
     reasoningEffort: settings.apiSettings.reasoningEffort ?? 'off',
-    manualBody: ''
+    manualBody: '',
   };
-
-  const providerOptions = buildProviderOptions(narrativePreset, profile.providerType);
 
   return {
     profile,
@@ -212,31 +193,58 @@ function resolveNarrativeConfig(): NarrativeConfig {
     model,
     temperature: settings.apiSettings.temperature,
     maxTokens: settings.apiSettings.maxTokens,
-    providerOptions
+    providerOptions: buildProviderOptions(narrativePreset, profile.providerType),
   };
+}
+
+// ============================================================================
+// Middleware
+// ============================================================================
+
+function createJsonExtractMiddleware(): LanguageModelV3Middleware {
+  return extractJsonMiddleware({
+    transform: (text) => {
+      try {
+        const repaired = jsonrepair(text);
+        if (repaired !== text) {
+          log('JSON repaired by jsonrepair');
+        }
+        return repaired;
+      } catch (e) {
+        log('jsonrepair failed:', e);
+        return text;
+      }
+    },
+  });
+}
+
+function buildStructuredMiddleware(supportsStructuredOutput: boolean): LanguageModelV3Middleware[] {
+  const base = [patchResponseMiddleware(), createJsonExtractMiddleware(), loggingMiddleware()];
+  if (supportsStructuredOutput) {
+    return base;
+  }
+  return [patchResponseMiddleware(), promptSchemaMiddleware(), createJsonExtractMiddleware(), loggingMiddleware()];
+}
+
+function buildPlainTextMiddleware(): LanguageModelV3Middleware[] {
+  return [patchResponseMiddleware(), loggingMiddleware()];
 }
 
 // ============================================================================
 // Generate Functions
 // ============================================================================
 
-/**
- * Generate structured output from LLM.
- * Uses AI SDK's Output.object() for automatic Zod schema validation.
- */
 export async function generateStructured<T extends z.ZodType>(
   options: GenerateObjectOptions<T>
 ): Promise<z.infer<T>> {
   const { presetId, schema, system, prompt, signal } = options;
-  const { preset, providerType, model, providerOptions } = resolveConfig(presetId);
+  const config = resolveConfig(presetId);
+  const { preset, providerType, model, providerOptions, supportsStructuredOutput } = config;
 
-  log('generateStructured', { presetId, model: preset.model, providerType });
+  log('generateStructured', { presetId, model: preset.model, providerType, supportsStructuredOutput });
 
   const result = await generateText({
-    model: wrapLanguageModel({
-    model,
-      middleware: extractJsonMiddleware(),
-    }),
+    model: wrapLanguageModel({ model, middleware: buildStructuredMiddleware(supportsStructuredOutput) }),
     system,
     prompt,
     output: Output.object({ schema }),
@@ -249,9 +257,6 @@ export async function generateStructured<T extends z.ZodType>(
   return result.output as z.infer<T>;
 }
 
-/**
- * Generate plain text output from LLM.
- */
 export async function generatePlainText(options: BaseGenerateOptions): Promise<string> {
   const { presetId, system, prompt, signal } = options;
   const { preset, providerType, model, providerOptions } = resolveConfig(presetId);
@@ -259,7 +264,7 @@ export async function generatePlainText(options: BaseGenerateOptions): Promise<s
   log('generatePlainText', { presetId, model: preset.model, providerType });
 
   const { text } = await generateText({
-    model,
+    model: wrapLanguageModel({ model, middleware: buildPlainTextMiddleware() }),
     system,
     prompt,
     temperature: preset.temperature,
@@ -271,9 +276,6 @@ export async function generatePlainText(options: BaseGenerateOptions): Promise<s
   return text;
 }
 
-/**
- * Stream text output from LLM.
- */
 export function streamPlainText(options: BaseGenerateOptions) {
   const { presetId, system, prompt, signal } = options;
   const { preset, providerType, model, providerOptions } = resolveConfig(presetId);
@@ -281,7 +283,7 @@ export function streamPlainText(options: BaseGenerateOptions) {
   log('streamPlainText', { presetId, model: preset.model, providerType });
 
   return streamText({
-    model,
+    model: wrapLanguageModel({ model, middleware: buildPlainTextMiddleware() }),
     system,
     prompt,
     temperature: preset.temperature,
@@ -291,20 +293,15 @@ export function streamPlainText(options: BaseGenerateOptions) {
   });
 }
 
-/**
- * Stream structured output from LLM.
- */
 export function streamStructured<T extends z.ZodType>(options: GenerateObjectOptions<T>) {
   const { presetId, schema, system, prompt, signal } = options;
-  const { preset, providerType, model, providerOptions } = resolveConfig(presetId);
+  const config = resolveConfig(presetId);
+  const { preset, providerType, model, providerOptions, supportsStructuredOutput } = config;
 
-  log('streamStructured', { presetId, model: preset.model, providerType });
+  log('streamStructured', { presetId, model: preset.model, providerType, supportsStructuredOutput });
 
   return streamText({
-    model: wrapLanguageModel({
-    model,
-      middleware: extractJsonMiddleware(),
-    }),
+    model: wrapLanguageModel({ model, middleware: buildStructuredMiddleware(supportsStructuredOutput) }),
     system,
     prompt,
     output: Output.object({ schema }),
@@ -316,22 +313,15 @@ export function streamStructured<T extends z.ZodType>(options: GenerateObjectOpt
 }
 
 // ============================================================================
-// Narrative Generation Functions (Main Profile)
+// Narrative Generation (Main Profile)
 // ============================================================================
 
 interface NarrativeGenerateOptions {
-  /** System prompt */
   system: string;
-  /** User prompt */
   prompt: string;
-  /** Optional abort signal for cancellation */
   signal?: AbortSignal;
 }
 
-/**
- * Stream narrative text using the main narrative profile.
- * Uses apiSettings.defaultModel, temperature, and maxTokens.
- */
 export function streamNarrative(options: NarrativeGenerateOptions) {
   const { system, prompt, signal } = options;
   const { providerType, model, temperature, maxTokens, providerOptions } = resolveNarrativeConfig();
@@ -339,7 +329,7 @@ export function streamNarrative(options: NarrativeGenerateOptions) {
   log('streamNarrative', { model: settings.apiSettings.defaultModel, providerType });
 
   return streamText({
-    model,
+    model: wrapLanguageModel({ model, middleware: buildPlainTextMiddleware() }),
     system,
     prompt,
     temperature,
@@ -349,10 +339,6 @@ export function streamNarrative(options: NarrativeGenerateOptions) {
   });
 }
 
-/**
- * Generate narrative text using the main narrative profile.
- * Uses apiSettings.defaultModel, temperature, and maxTokens.
- */
 export async function generateNarrative(options: NarrativeGenerateOptions): Promise<string> {
   const { system, prompt, signal } = options;
   const { providerType, model, temperature, maxTokens, providerOptions } = resolveNarrativeConfig();
@@ -360,7 +346,7 @@ export async function generateNarrative(options: NarrativeGenerateOptions): Prom
   log('generateNarrative', { model: settings.apiSettings.defaultModel, providerType });
 
   const { text } = await generateText({
-    model,
+    model: wrapLanguageModel({ model, middleware: buildPlainTextMiddleware() }),
     system,
     prompt,
     temperature,
@@ -377,110 +363,78 @@ export async function generateNarrative(options: NarrativeGenerateOptions): Prom
 // ============================================================================
 
 export interface GenerateImageOptions {
-  /** API profile ID to use for image generation */
   profileId: string;
-  /** Image model ID */
   model: string;
-  /** Generation prompt */
   prompt: string;
-  /** Image size (e.g., '1024x1024') */
   size?: string;
-  /** Reference images for img2img (base64 data URLs) */
   referenceImages?: string[];
-  /** Optional abort signal */
   signal?: AbortSignal;
 }
 
 export interface GenerateImageResult {
-  /** Generated image as base64 */
   base64: string;
-  /** Provider's revised prompt if any */
   revisedPrompt?: string;
 }
 
-/**
- * Get image model from provider.
- *
- * Detects available methods at runtime:
- * - .imageModel(modelId) - OpenAI-compatible, Chutes, Pollinations
- * - .image(modelId) - OpenAI SDK
- */
 function getImageModel(
   provider: ReturnType<typeof createProviderFromProfile>,
   providerType: ProviderType,
   modelId: string
 ) {
-  // Check for .imageModel() method (OpenAI-compatible, Chutes, Pollinations)
   if ('imageModel' in provider && typeof provider.imageModel === 'function') {
     return (provider as ReturnType<typeof createChutes>).imageModel(modelId);
   }
-
-  // Check for .image() method (OpenAI SDK)
   if ('image' in provider && typeof provider.image === 'function') {
     return (provider as ReturnType<typeof createOpenAI>).image(modelId);
   }
-
   throw new Error(`Provider ${providerType} does not support image generation`);
 }
 
-/**
- * Generate an image using the SDK.
- *
- * @param options - Image generation options
- * @returns Generated image data
- * @throws Error if profile not found or provider doesn't support image generation
- */
+function ensureDataUrl(img: string): string {
+  if (img.startsWith('data:')) {
+    return img;
+  }
+  return `data:image/png;base64,${img}`;
+}
+
 export async function generateImage(options: GenerateImageOptions): Promise<GenerateImageResult> {
   const { profileId, model, prompt, size = '1024x1024', referenceImages, signal } = options;
 
-  // Get profile
   const profile = settings.getProfile(profileId);
   if (!profile) {
     throw new Error(`Profile not found: ${profileId}`);
   }
 
-  // Verify provider supports image generation
   const capabilities = PROVIDER_CAPABILITIES[profile.providerType];
   if (!capabilities?.supportsImageGeneration) {
     throw new Error(`Provider ${profile.providerType} does not support image generation`);
   }
 
-  log('generateImage', { profileId, model, providerType: profile.providerType, hasReferences: !!referenceImages?.length });
+  log('generateImage', {
+    profileId,
+    model,
+    providerType: profile.providerType,
+    hasReferences: !!referenceImages?.length,
+  });
 
-  // Create provider and get image model
   const provider = createProviderFromProfile(profile);
   const imageModel = getImageModel(provider, profile.providerType, model);
 
-  // Build generation options
-  // If reference images are provided, use prompt object format for img2img
-  const generateOptions: Parameters<typeof sdkGenerateImage>[0] = {
+  const promptValue = referenceImages?.length
+    ? { text: prompt, images: referenceImages.map(ensureDataUrl) }
+    : prompt;
+
+  const result = await sdkGenerateImage({
     model: imageModel,
     size: size as `${number}x${number}`,
     abortSignal: signal,
-    prompt: referenceImages?.length
-      ? {
-          text: prompt,
-          images: referenceImages.map(img => {
-            // Ensure proper data URL format
-            if (img.startsWith('data:')) {
-              return img;
-            }
-            return `data:image/png;base64,${img}`;
-          }),
-        }
-      : prompt,
-  };
+    prompt: promptValue,
+  });
 
-  const result = await sdkGenerateImage(generateOptions);
-
-  // Get the first image
   const image = result.images?.[0] ?? result.image;
   if (!image) {
     throw new Error('No image data returned from provider');
   }
 
-  return {
-    base64: image.base64,
-    revisedPrompt: undefined, // SDK doesn't expose this consistently
-  };
+  return { base64: image.base64 };
 }
