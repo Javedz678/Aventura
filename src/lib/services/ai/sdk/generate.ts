@@ -13,6 +13,7 @@ import {
   Output,
   generateImage as sdkGenerateImage,
   wrapLanguageModel,
+  createGateway,
 } from 'ai';
 import type { LanguageModelV3, LanguageModelV3Middleware } from '@ai-sdk/provider';
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
@@ -28,6 +29,7 @@ import { createLogger } from '../core/config';
 import { createProviderFromProfile } from './providers';
 import { PROVIDERS, getApiModelName, getReasoningMode } from './providers/config';
 import { promptSchemaMiddleware, patchResponseMiddleware, loggingMiddleware } from './middleware';
+import { ui } from '$lib/stores/ui.svelte';
 
 const log = createLogger('Generate');
 
@@ -155,8 +157,8 @@ interface NarrativeConfig {
   providerOptions: ProviderOptions | undefined;
 }
 
-function resolveConfig(presetId: string): ResolvedConfig {
-  const preset = settings.getPresetConfig(presetId);
+function resolveConfig(presetId: string, serviceId: string, debugId?:string): ResolvedConfig {
+  const preset = settings.getPresetConfig(presetId, serviceId);
   const profileId = preset.profileId ?? settings.apiSettings.mainNarrativeProfileId;
   const profile = settings.getProfile(profileId);
 
@@ -164,7 +166,7 @@ function resolveConfig(presetId: string): ResolvedConfig {
     throw new Error(`Profile not found: ${profileId}`);
   }
 
-  const provider = createProviderFromProfile(profile);
+  const provider = createProviderFromProfile(profile, serviceId, debugId);
   const reasoningEnabled = preset.reasoningEffort && preset.reasoningEffort !== 'off';
 
   // For 'suffix' providers (e.g., NanoGPT), append suffix if reasoning is enabled
@@ -182,14 +184,14 @@ function resolveConfig(presetId: string): ResolvedConfig {
   };
 }
 
-function resolveNarrativeConfig(): NarrativeConfig {
+function resolveNarrativeConfig(debugId?:string): NarrativeConfig {
   const profile = settings.getMainNarrativeProfile();
 
   if (!profile) {
     throw new Error('Main narrative profile not configured. Please set up an API profile in Settings.');
   }
 
-  const provider = createProviderFromProfile(profile);
+  const provider = createProviderFromProfile(profile, "narrative", debugId);
   const baseModelId = settings.apiSettings.defaultModel;
   const reasoningEffort = settings.apiSettings.reasoningEffort ?? 'off';
   const reasoningEnabled = reasoningEffort !== 'off';
@@ -272,10 +274,11 @@ function buildNarrativeMiddleware(): LanguageModelV3Middleware[] {
 // ============================================================================
 
 export async function generateStructured<T extends z.ZodType>(
-  options: GenerateObjectOptions<T>
+  options: GenerateObjectOptions<T>,
+  serviceId: string
 ): Promise<z.infer<T>> {
   const { presetId, schema, system, prompt, signal } = options;
-  const config = resolveConfig(presetId);
+  const config = resolveConfig(presetId, serviceId);
   const { preset, providerType, model, providerOptions, supportsStructuredOutput } = config;
 
   log('generateStructured', { presetId, model: preset.model, providerType, supportsStructuredOutput });
@@ -294,9 +297,9 @@ export async function generateStructured<T extends z.ZodType>(
   return result.output as z.infer<T>;
 }
 
-export async function generatePlainText(options: BaseGenerateOptions): Promise<string> {
+export async function generatePlainText(options: BaseGenerateOptions, serviceId: string): Promise<string> {
   const { presetId, system, prompt, signal } = options;
-  const { preset, providerType, model, providerOptions } = resolveConfig(presetId);
+  const { preset, providerType, model, providerOptions } = resolveConfig(presetId, serviceId);
 
   log('generatePlainText', { presetId, model: preset.model, providerType });
 
@@ -313,11 +316,13 @@ export async function generatePlainText(options: BaseGenerateOptions): Promise<s
   return text;
 }
 
-export function streamPlainText(options: BaseGenerateOptions) {
+export function streamPlainText(options: BaseGenerateOptions, serviceId: string) {
+  const debugId = crypto.randomUUID();
   const { presetId, system, prompt, signal } = options;
-  const { preset, providerType, model, providerOptions } = resolveConfig(presetId);
+  const { preset, providerType, model, providerOptions } = resolveConfig(presetId, serviceId, debugId);
 
   log('streamPlainText', { presetId, model: preset.model, providerType });
+  const startTime = Date.now();
 
   return streamText({
     model: wrapLanguageModel({ model, middleware: buildPlainTextMiddleware() }),
@@ -327,15 +332,24 @@ export function streamPlainText(options: BaseGenerateOptions) {
     maxOutputTokens: preset.maxTokens,
     providerOptions,
     abortSignal: signal,
+    onFinish: (result) => {
+      ui.addDebugResponse(debugId, serviceId, {
+        result: result.content,
+        reasoning: result.reasoning,
+        usage: result.usage,
+      }, startTime);
+    },
   });
 }
 
-export function streamStructured<T extends z.ZodType>(options: GenerateObjectOptions<T>) {
+export function streamStructured<T extends z.ZodType>(options: GenerateObjectOptions<T>, serviceId: string) {
   const { presetId, schema, system, prompt, signal } = options;
-  const config = resolveConfig(presetId);
+  const debugId = crypto.randomUUID();
+  const config = resolveConfig(presetId, serviceId, debugId);
   const { preset, providerType, model, providerOptions, supportsStructuredOutput } = config;
 
   log('streamStructured', { presetId, model: preset.model, providerType, supportsStructuredOutput });
+  const startTime = Date.now();
 
   return streamText({
     model: wrapLanguageModel({ model, middleware: buildStructuredMiddleware(supportsStructuredOutput) }),
@@ -346,6 +360,11 @@ export function streamStructured<T extends z.ZodType>(options: GenerateObjectOpt
     maxOutputTokens: preset.maxTokens,
     providerOptions,
     abortSignal: signal,
+    onFinish: (result) => {
+      ui.addDebugResponse(debugId, serviceId, {
+        result: result.content,
+      }, startTime);
+    },
   });
 }
 
@@ -361,9 +380,11 @@ interface NarrativeGenerateOptions {
 
 export function streamNarrative(options: NarrativeGenerateOptions) {
   const { system, prompt, signal } = options;
-  const { providerType, model, temperature, maxTokens, providerOptions } = resolveNarrativeConfig();
+  const debugId = crypto.randomUUID();
+  const { providerType, model, temperature, maxTokens, providerOptions } = resolveNarrativeConfig(debugId);
 
   log('streamNarrative', { model: settings.apiSettings.defaultModel, providerType });
+  const startTime = Date.now();
 
   return streamText({
     model: wrapLanguageModel({ model, middleware: buildNarrativeMiddleware() }),
@@ -373,6 +394,14 @@ export function streamNarrative(options: NarrativeGenerateOptions) {
     maxOutputTokens: maxTokens,
     providerOptions,
     abortSignal: signal,
+    onFinish: (result) => {
+      ui.addDebugResponse(debugId, "narrative", {
+        result: result.content,
+        reasoning: result.reasoning,
+        usage: result.usage,
+      }, startTime);
+      console.log('Narrative generation finished', result);
+    }
   });
 }
 
@@ -454,7 +483,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     hasReferences: !!referenceImages?.length,
   });
 
-  const provider = createProviderFromProfile(profile);
+  const provider = createProviderFromProfile(profile, "image");
   const imageModel = getImageModel(provider, profile.providerType, model);
 
   const promptValue = referenceImages?.length
