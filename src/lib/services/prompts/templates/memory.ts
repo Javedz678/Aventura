@@ -126,6 +126,8 @@ Your tasks:
 4. Update relationship statuses and character states
 
 Guidelines:
+- Use list_chapters and query_chapter to understand what happened in the story
+- Ask specific questions when querying chapters (e.g., "What did [character] reveal?" not "Give me the full content")
 - Be conservative - only create entries for elements that are genuinely important to the story
 - Use exact names from the story text
 - When merging, combine all relevant information

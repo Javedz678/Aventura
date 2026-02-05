@@ -455,10 +455,15 @@ class AIService {
       ? recentActions[recentActions.length - 1].content
       : '';
 
-    // Build chapter summaries if available
-    const chapterSummaries = chapters.length > 0
-      ? chapters.map(c => `Chapter ${c.number}: ${c.summary}`).join('\n\n')
-      : undefined;
+    // Build chapters info for lore management
+    // Deep clone to avoid Svelte proxy issues with AI SDK structured cloning
+    const chapterInfos = JSON.parse(JSON.stringify(chapters.map(c => ({
+      number: c.number,
+      title: c.title,
+      summary: c.summary,
+      keywords: c.keywords,
+      characters: c.characters,
+    }))));
 
     // Create service and run session
     const service = serviceFactory.createLoreManagementService();
@@ -467,7 +472,8 @@ class AIService {
       narrativeResponse,
       userAction,
       existingEntries: entries,
-      chapterSummaries,
+      chapters: chapterInfos,
+      queryChapter: callbacks.onQueryChapter,
     });
 
     // Build changes array for the result
