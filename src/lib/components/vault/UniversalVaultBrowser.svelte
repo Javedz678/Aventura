@@ -139,9 +139,10 @@
 
         {#snippet badges()}
           {#if char.metadata?.linkedLorebookId}
-            <span class="text-muted-foreground flex items-center gap-1 text-[10px]">
-              <Link class="h-3 w-3" />
-              Lorebook
+            {@const lbName = lorebookVault.getById(char.metadata.linkedLorebookId as string)?.name}
+            <span class="text-muted-foreground flex max-w-40 items-center gap-1 text-[10px]">
+              <Link class="h-3 w-3 shrink-0" />
+              <span class="truncate">{lbName ?? 'Lorebook'}</span>
             </span>
           {/if}
         {/snippet}
@@ -196,9 +197,10 @@
         {/snippet}
         {#snippet badges()}
           {#if scen.metadata?.linkedLorebookId}
-            <span class="text-muted-foreground flex items-center gap-1 text-[10px]">
-              <Link class="h-3 w-3" />
-              Lorebook
+            {@const lbName = lorebookVault.getById(scen.metadata.linkedLorebookId)?.name}
+            <span class="text-muted-foreground flex max-w-40 items-center gap-1 text-[10px]">
+              <Link class="h-3 w-3 shrink-0" />
+              <span class="truncate">{lbName ?? 'Lorebook'}</span>
             </span>
           {/if}
         {/snippet}

@@ -16,6 +16,7 @@
   } from 'lucide-svelte'
   import TagBadge from '$lib/components/tags/TagBadge.svelte'
   import { tagStore } from '$lib/stores/tags.svelte'
+  import { lorebookVault } from '$lib/stores/lorebookVault.svelte'
   import VaultCard from './shared/VaultCard.svelte'
 
   type VaultItem = VaultCharacter | VaultLorebook | VaultScenario
@@ -52,6 +53,11 @@
   const hasLinkedLorebook = $derived(
     (type === 'character' || type === 'scenario') && !!item.metadata?.linkedLorebookId,
   )
+  const linkedLorebookName = $derived.by(() => {
+    if (!hasLinkedLorebook) return null
+    const id = item.metadata?.linkedLorebookId as string
+    return lorebookVault.getById(id)?.name ?? null
+  })
   const isLinkedFromCard = $derived(
     type === 'lorebook' && !!(item.metadata as Record<string, unknown>)?.linkedFromName,
   )
@@ -120,9 +126,9 @@
   {#snippet badges()}
     {#if asCharacter}
       {#if hasLinkedLorebook}
-        <Badge variant="secondary" class="h-4 gap-1 px-1.5 text-[10px] font-normal">
-          <Link class="h-2.5 w-2.5" />
-          Lorebook
+        <Badge variant="secondary" class="max-w-32 h-4 gap-1 px-1.5 text-[10px] font-normal">
+          <Link class="h-2.5 w-2.5 shrink-0" />
+          <span class="truncate">{linkedLorebookName ?? 'Lorebook'}</span>
         </Badge>
       {/if}
     {:else if asLorebook}
@@ -155,9 +161,9 @@
           </span>
         {/if}
         {#if hasLinkedLorebook}
-          <span class="flex items-center gap-1 text-[10px]">
-            <Link class="h-3 w-3" />
-            Lorebook
+          <span class="flex max-w-32 items-center gap-1 text-[10px]">
+            <Link class="h-3 w-3 shrink-0" />
+            <span class="truncate">{linkedLorebookName ?? 'Lorebook'}</span>
           </span>
         {/if}
         {#if asScenario.source === 'wizard'}
