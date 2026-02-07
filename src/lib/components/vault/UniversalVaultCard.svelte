@@ -76,6 +76,11 @@
     event: Calendar,
   }
 
+  // Scenario tags with "imported" filtered out (source badge handles that)
+  const scenarioTags = $derived(
+    asScenario ? asScenario.tags.filter((t) => t.toLowerCase() !== 'imported') : [],
+  )
+
   // Helper for Lorebook Entry Counts
   const lorebookEntryCounts = $derived.by(() => {
     if (!asLorebook?.metadata?.entryBreakdown) return []
@@ -135,15 +140,14 @@
       <span class="text-muted-foreground text-[10px] font-medium">
         {asLorebook.entries.length} entries
       </span>
-      {#if asLorebook.source === 'story' || asLorebook.source === 'import'}
-        <Badge variant="secondary" class="h-4 px-1.5 text-[10px] font-normal">
-          {asLorebook.source === 'story' ? 'Story' : 'Imported'}
-        </Badge>
-      {/if}
       {#if isLinkedFromCard}
         <Badge variant="secondary" class="h-4 gap-1 px-1.5 text-[10px] font-normal">
           <Link class="h-2.5 w-2.5" />
           {linkedFromName}
+        </Badge>
+      {:else if asLorebook.source === 'story' || asLorebook.source === 'import'}
+        <Badge variant="secondary" class="h-4 px-1.5 text-[10px] font-normal">
+          {asLorebook.source === 'story' ? 'Story' : 'Imported'}
         </Badge>
       {/if}
     {:else if asScenario}
@@ -233,12 +237,12 @@
             {asScenario.source === 'wizard' ? 'Created' : 'Imported'}
           </Badge>
         {/if}
-        {#each asScenario.tags.slice(0, 3) as tag, i (i)}
+        {#each scenarioTags.slice(0, 3) as tag, i (i)}
           <TagBadge name={tag} color={tagStore.getColor(tag, 'scenario')} />
         {/each}
-        {#if asScenario.tags.length > 3}
+        {#if scenarioTags.length > 3}
           <span class="text-muted-foreground self-center text-[10px]">
-            +{asScenario.tags.length - 3}
+            +{scenarioTags.length - 3}
           </span>
         {/if}
       </div>
