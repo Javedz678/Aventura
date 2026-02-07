@@ -1,4 +1,4 @@
-# Aventura
+# Aventuras
 
 AI-powered interactive fiction and creative writing application built with Tauri, SvelteKit, and TypeScript.
 
