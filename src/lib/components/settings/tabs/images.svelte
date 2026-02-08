@@ -33,6 +33,30 @@
     { value: '720x1280', label: '720x1280 (Portrait)' },
   ] as const
 
+  // Helper to get available sizes for a model
+  function getSizesForModel(
+    profileId: string | null,
+    modelId: string | null,
+    models: ImageModelInfo[],
+    defaults: ReadonlyArray<{ value: string; label: string }>,
+  ) {
+    if (!profileId || !modelId) return defaults
+
+    const profile = settings.getProfile(profileId)
+    // Only use API-provided sizes for nanoGpt for now
+    if (profile?.providerType !== 'nanogpt') return defaults
+
+    const modelInfo = models.find((m) => m.id === modelId)
+    if (!modelInfo || !modelInfo.supportsSizes || modelInfo.supportsSizes.length === 0) {
+      return defaults
+    }
+
+    return modelInfo.supportsSizes.map((size) => ({
+      value: size,
+      label: size,
+    }))
+  }
+
   // Tab state
   let activeTab = $state<'general' | 'characters' | 'backgrounds'>('general')
 
@@ -59,6 +83,46 @@
   let backgroundModels = $state<ImageModelInfo[]>([])
   let isLoadingBackgroundModels = $state(false)
   let backgroundModelsError = $state<string | null>(null)
+
+  // Derived available sizes based on selected models
+  const availableStandardSizes = $derived(
+    getSizesForModel(
+      settings.systemServicesSettings.imageGeneration.profileId,
+      settings.systemServicesSettings.imageGeneration.model,
+      standardModels,
+      imageSizes,
+    ),
+  )
+
+  const availableReferenceSizes = $derived(
+    getSizesForModel(
+      settings.systemServicesSettings.imageGeneration.referenceProfileId ||
+        settings.systemServicesSettings.imageGeneration.profileId,
+      settings.systemServicesSettings.imageGeneration.referenceModel,
+      referenceModels.length > 0 ? referenceModels : standardModels,
+      imageSizes,
+    ),
+  )
+
+  const availablePortraitSizes = $derived(
+    getSizesForModel(
+      settings.systemServicesSettings.imageGeneration.portraitProfileId ||
+        settings.systemServicesSettings.imageGeneration.profileId,
+      settings.systemServicesSettings.imageGeneration.portraitModel,
+      portraitModels.length > 0 ? portraitModels : standardModels,
+      imageSizes,
+    ),
+  )
+
+  const availableBackgroundSizes = $derived(
+    getSizesForModel(
+      settings.systemServicesSettings.imageGeneration.backgroundProfileId ||
+        settings.systemServicesSettings.imageGeneration.profileId,
+      settings.systemServicesSettings.imageGeneration.backgroundModel,
+      backgroundModels.length > 0 ? backgroundModels : standardModels,
+      backgroundSizes,
+    ),
+  )
 
   // Filtered models for img2img (reference)
   const referenceImg2ImgModels = $derived(referenceModels.filter((m) => m.supportsImg2Img))
@@ -313,8 +377,8 @@
                   <div class="space-y-2">
                     <Label>Regular Image Size</Label>
                     <Autocomplete
-                      items={imageSizes}
-                      selected={imageSizes.find(
+                      items={availableStandardSizes}
+                      selected={availableStandardSizes.find(
                         (s) => s.value === settings.systemServicesSettings.imageGeneration.size,
                       )}
                       onSelect={(v) => {
@@ -384,8 +448,8 @@
                   <div class="space-y-2">
                     <Label>Reference Image Size</Label>
                     <Autocomplete
-                      items={imageSizes}
-                      selected={imageSizes.find(
+                      items={availableReferenceSizes}
+                      selected={availableReferenceSizes.find(
                         (s) =>
                           s.value === settings.systemServicesSettings.imageGeneration.referenceSize,
                       )}
@@ -508,8 +572,8 @@
             <div class="space-y-2">
               <Label>Character Portrait Size</Label>
               <Autocomplete
-                items={imageSizes}
-                selected={imageSizes.find(
+                items={availablePortraitSizes}
+                selected={availablePortraitSizes.find(
                   (s) => s.value === settings.systemServicesSettings.imageGeneration.portraitSize,
                 )}
                 onSelect={(v) => {
@@ -612,8 +676,8 @@
           <div class="space-y-2">
             <Label>Background Size</Label>
             <Autocomplete
-              items={backgroundSizes}
-              selected={backgroundSizes.find(
+              items={availableBackgroundSizes}
+              selected={availableBackgroundSizes.find(
                 (s) => s.value === settings.systemServicesSettings.imageGeneration.backgroundSize,
               )}
               onSelect={(v) => {
