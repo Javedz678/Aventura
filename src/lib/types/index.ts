@@ -875,6 +875,19 @@ export interface TranslationSettings {
   translateWorldState: boolean // Translate world state UI elements
 }
 
+// ===== Experimental Features =====
+
+export interface ExperimentalFeatures {
+  /** Phase 1: Record world state deltas on story entries after classification */
+  stateTracking: boolean
+  /** Phase 2: Undo world state changes when deleting entries (cascade rollback) */
+  rollbackOnDelete: boolean
+  /** Phase 3: Copy-on-write branches instead of full entity duplication */
+  lightweightBranches: boolean
+  /** Number of entries between automatic world state snapshots (for fast rollback) */
+  autoSnapshotInterval: number
+}
+
 export type VaultType = 'character' | 'lorebook' | 'scenario'
 
 export interface VaultTag {

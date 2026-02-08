@@ -133,6 +133,23 @@ class DatabaseService {
     await db.execute('DELETE FROM settings WHERE key = ?', [key])
   }
 
+  async getAllSettings(): Promise<Record<string, string>> {
+    const db = await this.getDb()
+    const results = await db.select<{ key: string; value: string }[]>(
+      'SELECT key, value FROM settings',
+    )
+    const settings: Record<string, string> = {}
+    for (const row of results) {
+      settings[row.key] = row.value
+    }
+    return settings
+  }
+
+  async vacuumInto(destPath: string): Promise<void> {
+    const db = await this.getDb()
+    await db.execute(`VACUUM INTO ?`, [destPath])
+  }
+
   // Story operations
   async getAllStories(): Promise<Story[]> {
     const db = await this.getDb()
