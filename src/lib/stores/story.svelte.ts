@@ -32,6 +32,7 @@ import {
   type StoryCreatedEvent,
 } from '$lib/services/events'
 import { SvelteMap, SvelteSet } from 'svelte/reactivity'
+import { aiService } from '$lib/services/ai'
 
 const DEBUG = true
 
@@ -2519,12 +2520,10 @@ class StoryStore {
       await database.restoreRetryBackup(
         this.entries[this.entries.length - 1].id,
         this.currentStory.id,
-        backup.entries,
         backup.characters,
         backup.locations,
         backup.items,
         backup.storyBeats,
-        backup.embeddedImages,
       )
 
       // Reload from database to ensure a clean, fully restored state
@@ -2890,10 +2889,11 @@ class StoryStore {
     }
 
     // Add opening scene as first narration entry
+    let openingEntry: StoryEntry | undefined = undefined
     if (data.openingScene) {
       const tokenCount = countTokens(data.openingScene)
       const baseTime = storyData.timeTracker ?? { years: 0, days: 0, hours: 0, minutes: 0 }
-      await database.addStoryEntry({
+      openingEntry = await database.addStoryEntry({
         id: crypto.randomUUID(),
         storyId,
         type: 'narration',
@@ -2927,6 +2927,12 @@ class StoryStore {
         await database.addEntry(entry)
       }
       log('Added imported entries:', data.importedEntries.length)
+    }
+
+    // Generate background image from opening scene
+    if (data.openingScene && openingEntry) {
+      aiService.analyzeBackgroundChangeAndGenerateImage(storyId, [openingEntry])
+      log('Generated background image')
     }
 
     // Emit event

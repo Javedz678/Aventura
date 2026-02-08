@@ -1231,7 +1231,6 @@ class DatabaseService {
   async restoreRetryBackup(
     lastEntryId: string,
     storyId: string,
-    entries: StoryEntry[],
     characters: Character[],
     locations: Location[],
     items: Item[],
