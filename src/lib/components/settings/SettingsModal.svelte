@@ -48,7 +48,15 @@
     { id: 'experimental', label: 'Labs', icon: FlaskConical },
   ] as const
 
-  type SettingsTab = 'api' | 'generation' | 'interface' | 'prompts' | 'images' | 'tts' | 'advanced' | 'experimental'
+  type SettingsTab =
+    | 'api'
+    | 'generation'
+    | 'interface'
+    | 'prompts'
+    | 'images'
+    | 'tts'
+    | 'advanced'
+    | 'experimental'
 
   // Use the tab from UI store (allows navigation from outside, e.g., profile warning banner)
   let activeTab = $state<SettingsTab>(ui.settingsTab as SettingsTab)

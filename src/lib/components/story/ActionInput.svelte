@@ -472,18 +472,26 @@
             ui.setSuggestions(suggestions, storyId)
             // Persist suggestions to the narration entry for time-travel restore
             if (narrationEntry && suggestions.length > 0) {
-              database.updateStoryEntry(narrationEntry.id, {
-                suggestedActions: JSON.stringify(suggestions),
-              }).catch((err) => console.warn('[ActionInput] Failed to save suggestions to entry:', err))
+              database
+                .updateStoryEntry(narrationEntry.id, {
+                  suggestedActions: JSON.stringify(suggestions),
+                })
+                .catch((err) =>
+                  console.warn('[ActionInput] Failed to save suggestions to entry:', err),
+                )
             }
           },
           setActionChoices: (choices, storyId) => {
             ui.setActionChoices(choices, storyId)
             // Persist action choices to the narration entry for time-travel restore
             if (narrationEntry && choices.length > 0) {
-              database.updateStoryEntry(narrationEntry.id, {
-                suggestedActions: JSON.stringify(choices),
-              }).catch((err) => console.warn('[ActionInput] Failed to save action choices to entry:', err))
+              database
+                .updateStoryEntry(narrationEntry.id, {
+                  suggestedActions: JSON.stringify(choices),
+                })
+                .catch((err) =>
+                  console.warn('[ActionInput] Failed to save action choices to entry:', err),
+                )
             }
           },
           emitResponseStreaming: (chunk, accumulated) => {
@@ -689,16 +697,17 @@
         }
 
         const protagonist = story.characters.find((c) => c.relationship === 'self')
-        const promptContext: import('$lib/services/generation/phases/PostGenerationPhase').PromptContext = {
-          mode: 'adventure',
-          pov: story.pov,
-          tense: story.tense,
-          protagonistName: protagonist?.name || 'the protagonist',
-          genre: story.currentStory.genre ?? undefined,
-          settingDescription: story.currentStory.description ?? undefined,
-          tone: story.currentStory.settings?.tone ?? undefined,
-          themes: story.currentStory.settings?.themes ?? undefined,
-        }
+        const promptContext: import('$lib/services/generation/phases/PostGenerationPhase').PromptContext =
+          {
+            mode: 'adventure',
+            pov: story.pov,
+            tense: story.tense,
+            protagonistName: protagonist?.name || 'the protagonist',
+            genre: story.currentStory.genre ?? undefined,
+            settingDescription: story.currentStory.description ?? undefined,
+            tone: story.currentStory.settings?.tone ?? undefined,
+            themes: story.currentStory.settings?.themes ?? undefined,
+          }
 
         const worldState = {
           characters: story.characters,
@@ -720,9 +729,13 @@
         if (result.choices.length > 0) {
           ui.setActionChoices(result.choices, story.currentStory!.id)
           // Also save to the last narration entry for future time-travel
-          database.updateStoryEntry(lastNarration.id, {
-            suggestedActions: JSON.stringify(result.choices),
-          }).catch((err) => console.warn('[ActionInput] Failed to save regenerated action choices:', err))
+          database
+            .updateStoryEntry(lastNarration.id, {
+              suggestedActions: JSON.stringify(result.choices),
+            })
+            .catch((err) =>
+              console.warn('[ActionInput] Failed to save regenerated action choices:', err),
+            )
         }
       } catch (error) {
         console.warn('[ActionInput] Failed to regenerate action choices after delete:', error)
@@ -766,9 +779,13 @@
       // Persist refreshed suggestions to the latest narration entry for time-travel restore
       const lastNarration = [...story.entries].reverse().find((e) => e.type === 'narration')
       if (lastNarration && result.suggestions.length > 0) {
-        database.updateStoryEntry(lastNarration.id, {
-          suggestedActions: JSON.stringify(result.suggestions),
-        }).catch((err) => console.warn('[ActionInput] Failed to save refreshed suggestions to entry:', err))
+        database
+          .updateStoryEntry(lastNarration.id, {
+            suggestedActions: JSON.stringify(result.suggestions),
+          })
+          .catch((err) =>
+            console.warn('[ActionInput] Failed to save refreshed suggestions to entry:', err),
+          )
       }
     } catch (error) {
       log('Failed to generate suggestions:', error)

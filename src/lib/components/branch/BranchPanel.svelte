@@ -310,7 +310,8 @@
           </button>
           {#if !isCurrent(branch.id)}
             <button
-              class="text-surface-500 flex min-h-[32px] min-w-[32px] items-center justify-center p-1 transition-opacity sm:min-h-0 sm:min-w-0 sm:p-0.5 {children.length > 0
+              class="text-surface-500 flex min-h-[32px] min-w-[32px] items-center justify-center p-1 transition-opacity sm:min-h-0 sm:min-w-0 sm:p-0.5 {children.length >
+              0
                 ? 'cursor-not-allowed opacity-30'
                 : 'hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100'}"
               onclick={(e) => {

@@ -129,16 +129,26 @@ class DatabaseService {
    * Execute a raw SQL query for debugging purposes.
    * SELECT queries return rows; other queries return affected row count.
    */
-  async rawQuery(sql: string): Promise<{ columns: string[]; rows: Record<string, unknown>[]; rowsAffected?: number }> {
+  async rawQuery(
+    sql: string,
+  ): Promise<{ columns: string[]; rows: Record<string, unknown>[]; rowsAffected?: number }> {
     const db = await this.getDb()
     const trimmed = sql.trim().toUpperCase()
-    if (trimmed.startsWith('SELECT') || trimmed.startsWith('PRAGMA') || trimmed.startsWith('EXPLAIN')) {
+    if (
+      trimmed.startsWith('SELECT') ||
+      trimmed.startsWith('PRAGMA') ||
+      trimmed.startsWith('EXPLAIN')
+    ) {
       const rows = await db.select<Record<string, unknown>[]>(sql)
       const columns = rows.length > 0 ? Object.keys(rows[0]) : []
       return { columns, rows }
     } else {
       const result = await db.execute(sql)
-      return { columns: ['rowsAffected'], rows: [{ rowsAffected: result.rowsAffected }], rowsAffected: result.rowsAffected }
+      return {
+        columns: ['rowsAffected'],
+        rows: [{ rowsAffected: result.rowsAffected }],
+        rowsAffected: result.rowsAffected,
+      }
     }
   }
 
@@ -1317,12 +1327,8 @@ class DatabaseService {
         JSON.stringify(snapshot.locationsSnapshot),
         JSON.stringify(snapshot.itemsSnapshot),
         JSON.stringify(snapshot.storyBeatsSnapshot),
-        snapshot.lorebookEntriesSnapshot
-          ? JSON.stringify(snapshot.lorebookEntriesSnapshot)
-          : null,
-        snapshot.timeTrackerSnapshot
-          ? JSON.stringify(snapshot.timeTrackerSnapshot)
-          : null,
+        snapshot.lorebookEntriesSnapshot ? JSON.stringify(snapshot.lorebookEntriesSnapshot) : null,
+        snapshot.timeTrackerSnapshot ? JSON.stringify(snapshot.timeTrackerSnapshot) : null,
         snapshot.createdAt,
       ],
     )
@@ -1779,7 +1785,9 @@ class DatabaseService {
     totalDeleted += beatResult.rowsAffected
 
     if (totalDeleted > 0) {
-      console.log(`[DatabaseService] Cleaned up ${totalDeleted} no-op COW override(s) for story ${storyId}`)
+      console.log(
+        `[DatabaseService] Cleaned up ${totalDeleted} no-op COW override(s) for story ${storyId}`,
+      )
     }
 
     return totalDeleted
@@ -2370,9 +2378,7 @@ class DatabaseService {
       lorebookEntriesSnapshot: row.lorebook_entries_snapshot
         ? JSON.parse(row.lorebook_entries_snapshot)
         : undefined,
-      timeTrackerSnapshot: row.time_tracker_snapshot
-        ? JSON.parse(row.time_tracker_snapshot)
-        : null,
+      timeTrackerSnapshot: row.time_tracker_snapshot ? JSON.parse(row.time_tracker_snapshot) : null,
       createdAt: row.created_at,
     }
   }

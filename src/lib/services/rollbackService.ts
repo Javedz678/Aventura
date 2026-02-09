@@ -10,11 +10,7 @@
  * 4. Cleans up auto-snapshots after the rollback position
  */
 
-import type {
-  WorldStateDelta,
-  StoryEntry,
-  TimeTracker,
-} from '$lib/types'
+import type { WorldStateDelta, StoryEntry, TimeTracker } from '$lib/types'
 import { database } from './database'
 
 const DEBUG = true
@@ -265,14 +261,12 @@ class RollbackService {
   /**
    * Clear current location flag for all locations in a story/branch.
    */
-  private async clearCurrentLocation(
-    storyId: string,
-    branchId: string | null,
-  ): Promise<void> {
+  private async clearCurrentLocation(storyId: string, branchId: string | null): Promise<void> {
     // Use raw update to clear all current flags — no single entity to "set current"
-    const locations = branchId === null
-      ? await database.getLocationsForBranch(storyId, null)
-      : await database.getLocationsForBranch(storyId, branchId)
+    const locations =
+      branchId === null
+        ? await database.getLocationsForBranch(storyId, null)
+        : await database.getLocationsForBranch(storyId, branchId)
 
     for (const loc of locations) {
       if (loc.current) {

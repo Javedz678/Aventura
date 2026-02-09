@@ -714,8 +714,7 @@ class StoryStore {
 
     // Phase 2: Rollback on delete — cascade delete from this position with world state undo
     const rollbackEnabled =
-      settings.experimentalFeatures.stateTracking &&
-      settings.experimentalFeatures.rollbackOnDelete
+      settings.experimentalFeatures.stateTracking && settings.experimentalFeatures.rollbackOnDelete
 
     if (rollbackEnabled) {
       log('Rollback-on-delete: cascading from position', existingEntry.position)
@@ -1057,10 +1056,7 @@ class StoryStore {
    * Returns true if on a non-main branch with lightweightBranches enabled.
    */
   private isCowBranch(): boolean {
-    return (
-      !!this.currentStory?.currentBranchId &&
-      settings.experimentalFeatures.lightweightBranches
-    )
+    return !!this.currentStory?.currentBranchId && settings.experimentalFeatures.lightweightBranches
   }
 
   /**
@@ -1070,7 +1066,11 @@ class StoryStore {
    */
   private async cowCharacter(entity: Character): Promise<{ entity: Character; wasCowed: boolean }> {
     const branchId = this.currentStory?.currentBranchId
-    if (!branchId || entity.branchId === branchId || !settings.experimentalFeatures.lightweightBranches) {
+    if (
+      !branchId ||
+      entity.branchId === branchId ||
+      !settings.experimentalFeatures.lightweightBranches
+    ) {
       return { entity, wasCowed: false }
     }
 
@@ -1081,8 +1081,14 @@ class StoryStore {
       overridesId: entity.overridesId ?? entity.id,
     }
     await database.addCharacter(override)
-    this.characters = this.characters.map((c) => c.id === entity.id ? override : c)
-    log('COW: Created character override', override.name, override.id, '→ overrides', override.overridesId)
+    this.characters = this.characters.map((c) => (c.id === entity.id ? override : c))
+    log(
+      'COW: Created character override',
+      override.name,
+      override.id,
+      '→ overrides',
+      override.overridesId,
+    )
     return { entity: override, wasCowed: true }
   }
 
@@ -1091,7 +1097,11 @@ class StoryStore {
    */
   private async cowLocation(entity: Location): Promise<{ entity: Location; wasCowed: boolean }> {
     const branchId = this.currentStory?.currentBranchId
-    if (!branchId || entity.branchId === branchId || !settings.experimentalFeatures.lightweightBranches) {
+    if (
+      !branchId ||
+      entity.branchId === branchId ||
+      !settings.experimentalFeatures.lightweightBranches
+    ) {
       return { entity, wasCowed: false }
     }
 
@@ -1102,8 +1112,14 @@ class StoryStore {
       overridesId: entity.overridesId ?? entity.id,
     }
     await database.addLocation(override)
-    this.locations = this.locations.map((l) => l.id === entity.id ? override : l)
-    log('COW: Created location override', override.name, override.id, '→ overrides', override.overridesId)
+    this.locations = this.locations.map((l) => (l.id === entity.id ? override : l))
+    log(
+      'COW: Created location override',
+      override.name,
+      override.id,
+      '→ overrides',
+      override.overridesId,
+    )
     return { entity: override, wasCowed: true }
   }
 
@@ -1112,7 +1128,11 @@ class StoryStore {
    */
   private async cowItem(entity: Item): Promise<{ entity: Item; wasCowed: boolean }> {
     const branchId = this.currentStory?.currentBranchId
-    if (!branchId || entity.branchId === branchId || !settings.experimentalFeatures.lightweightBranches) {
+    if (
+      !branchId ||
+      entity.branchId === branchId ||
+      !settings.experimentalFeatures.lightweightBranches
+    ) {
       return { entity, wasCowed: false }
     }
 
@@ -1123,8 +1143,14 @@ class StoryStore {
       overridesId: entity.overridesId ?? entity.id,
     }
     await database.addItem(override)
-    this.items = this.items.map((i) => i.id === entity.id ? override : i)
-    log('COW: Created item override', override.name, override.id, '→ overrides', override.overridesId)
+    this.items = this.items.map((i) => (i.id === entity.id ? override : i))
+    log(
+      'COW: Created item override',
+      override.name,
+      override.id,
+      '→ overrides',
+      override.overridesId,
+    )
     return { entity: override, wasCowed: true }
   }
 
@@ -1133,7 +1159,11 @@ class StoryStore {
    */
   private async cowStoryBeat(entity: StoryBeat): Promise<{ entity: StoryBeat; wasCowed: boolean }> {
     const branchId = this.currentStory?.currentBranchId
-    if (!branchId || entity.branchId === branchId || !settings.experimentalFeatures.lightweightBranches) {
+    if (
+      !branchId ||
+      entity.branchId === branchId ||
+      !settings.experimentalFeatures.lightweightBranches
+    ) {
       return { entity, wasCowed: false }
     }
 
@@ -1144,8 +1174,14 @@ class StoryStore {
       overridesId: entity.overridesId ?? entity.id,
     }
     await database.addStoryBeat(override)
-    this.storyBeats = this.storyBeats.map((b) => b.id === entity.id ? override : b)
-    log('COW: Created story beat override', override.title, override.id, '→ overrides', override.overridesId)
+    this.storyBeats = this.storyBeats.map((b) => (b.id === entity.id ? override : b))
+    log(
+      'COW: Created story beat override',
+      override.title,
+      override.id,
+      '→ overrides',
+      override.overridesId,
+    )
     return { entity: override, wasCowed: true }
   }
 
@@ -1154,7 +1190,11 @@ class StoryStore {
    */
   private async cowLorebookEntry(entity: Entry): Promise<{ entity: Entry; wasCowed: boolean }> {
     const branchId = this.currentStory?.currentBranchId
-    if (!branchId || entity.branchId === branchId || !settings.experimentalFeatures.lightweightBranches) {
+    if (
+      !branchId ||
+      entity.branchId === branchId ||
+      !settings.experimentalFeatures.lightweightBranches
+    ) {
       return { entity, wasCowed: false }
     }
 
@@ -1167,8 +1207,14 @@ class StoryStore {
       updatedAt: now,
     }
     await database.addEntry(override)
-    this.lorebookEntries = this.lorebookEntries.map((e) => e.id === entity.id ? override : e)
-    log('COW: Created lorebook entry override', override.name, override.id, '→ overrides', override.overridesId)
+    this.lorebookEntries = this.lorebookEntries.map((e) => (e.id === entity.id ? override : e))
+    log(
+      'COW: Created lorebook entry override',
+      override.name,
+      override.id,
+      '→ overrides',
+      override.overridesId,
+    )
     return { entity: override, wasCowed: true }
   }
 
@@ -1279,7 +1325,9 @@ class StoryStore {
         if (prevCurrent) {
           const { entity: ownedPrev } = await this.cowLocation(prevCurrent)
           await database.updateLocation(ownedPrev.id, { current: false })
-          this.locations = this.locations.map((l) => l.id === ownedPrev.id ? { ...l, current: false } : l)
+          this.locations = this.locations.map((l) =>
+            l.id === ownedPrev.id ? { ...l, current: false } : l,
+          )
         }
         await database.updateLocation(owned.id, { ...updates, visited: true })
         this.locations = this.locations.map((l) =>
@@ -1451,7 +1499,9 @@ class StoryStore {
     // COW: ensure entity is owned by current branch before updating
     const { entity: owned } = await this.cowStoryBeat(existing)
     await database.updateStoryBeat(owned.id, resolvedUpdates)
-    this.storyBeats = this.storyBeats.map((b) => (b.id === owned.id ? { ...b, ...resolvedUpdates } : b))
+    this.storyBeats = this.storyBeats.map((b) =>
+      b.id === owned.id ? { ...b, ...resolvedUpdates } : b,
+    )
   }
 
   // Delete a story beat
@@ -1492,7 +1542,12 @@ class StoryStore {
     await database.updateCharacter(ownedNew.id, { relationship: 'self' })
 
     this.characters = this.characters.map((c) => {
-      if (currentProtagonist && (c.overridesId === currentProtagonist.overridesId || c.overridesId === currentProtagonist.id || c.id === currentProtagonist.id)) {
+      if (
+        currentProtagonist &&
+        (c.overridesId === currentProtagonist.overridesId ||
+          c.overridesId === currentProtagonist.id ||
+          c.id === currentProtagonist.id)
+      ) {
         // Find the current in-memory version that replaced the old protagonist
         if (c.relationship !== 'self') return c
         return { ...c, relationship: label! }
@@ -1592,10 +1647,7 @@ class StoryStore {
    * Apply classification results to update world state.
    * This is Phase 4 of the processing pipeline per design doc.
    */
-  async applyClassificationResult(
-    result: ClassificationResult,
-    entryId?: string,
-  ): Promise<void> {
+  async applyClassificationResult(result: ClassificationResult, entryId?: string): Promise<void> {
     if (!this.currentStory) {
       log('applyClassificationResult: No story loaded, skipping')
       return
@@ -1673,9 +1725,7 @@ class StoryStore {
 
       // Snapshot items that will be updated
       for (const update of result.entryUpdates.itemUpdates) {
-        const existing = this.items.find(
-          (i) => i.name.toLowerCase() === update.name.toLowerCase(),
-        )
+        const existing = this.items.find((i) => i.name.toLowerCase() === update.name.toLowerCase())
         if (existing) {
           itemsBefore.push({
             id: existing.id,
@@ -1797,9 +1847,12 @@ class StoryStore {
             // COW-aware: targeted updates instead of blanket clear
             const prevCurrent = this.locations.find((l) => l.current && l.id !== ownedLoc.id)
             if (prevCurrent) {
-              const { entity: ownedPrev, wasCowed: prevWasCowed } = await this.cowLocation(prevCurrent)
+              const { entity: ownedPrev, wasCowed: prevWasCowed } =
+                await this.cowLocation(prevCurrent)
               await database.updateLocation(ownedPrev.id, { current: false })
-              this.locations = this.locations.map((l) => l.id === ownedPrev.id ? { ...l, current: false } : l)
+              this.locations = this.locations.map((l) =>
+                l.id === ownedPrev.id ? { ...l, current: false } : l,
+              )
               if (prevWasCowed && trackingEnabled) {
                 createdLocationIds.push(ownedPrev.id)
                 const prevIdx = locationsBefore.findIndex((lb) => lb.id === prevCurrent.id)
@@ -1942,7 +1995,9 @@ class StoryStore {
             if (prevCurrent) {
               const { entity: ownedPrev } = await this.cowLocation(prevCurrent)
               await database.updateLocation(ownedPrev.id, { current: false })
-              this.locations = this.locations.map((l) => l.id === ownedPrev.id ? { ...l, current: false } : l)
+              this.locations = this.locations.map((l) =>
+                l.id === ownedPrev.id ? { ...l, current: false } : l,
+              )
             }
           } else {
             this.locations = this.locations.map((l) => ({ ...l, current: false }))
@@ -1976,12 +2031,16 @@ class StoryStore {
         log('Setting current location from scene:', currentLoc.name)
         if (this.isCowBranch()) {
           // COW-aware: targeted updates
-          const { entity: ownedTarget, wasCowed: targetWasCowed } = await this.cowLocation(currentLoc)
+          const { entity: ownedTarget, wasCowed: targetWasCowed } =
+            await this.cowLocation(currentLoc)
           const prevCurrent = this.locations.find((l) => l.current && l.id !== ownedTarget.id)
           if (prevCurrent) {
-            const { entity: ownedPrev, wasCowed: prevWasCowed } = await this.cowLocation(prevCurrent)
+            const { entity: ownedPrev, wasCowed: prevWasCowed } =
+              await this.cowLocation(prevCurrent)
             await database.updateLocation(ownedPrev.id, { current: false })
-            this.locations = this.locations.map((l) => l.id === ownedPrev.id ? { ...l, current: false } : l)
+            this.locations = this.locations.map((l) =>
+              l.id === ownedPrev.id ? { ...l, current: false } : l,
+            )
             if (prevWasCowed && trackingEnabled) {
               createdLocationIds.push(ownedPrev.id)
               const idx = locationsBefore.findIndex((lb) => lb.id === prevCurrent.id)

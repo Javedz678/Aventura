@@ -1041,9 +1041,11 @@ class UIStore {
         this.actionChoices = parsed as ActionChoice[]
         // Also persist to settings so they survive app restart
         const data: PersistedActionChoices = { storyId, choices: parsed as ActionChoice[] }
-        database.setSetting(this.getActionChoicesKey(storyId), JSON.stringify(data)).catch((err) => {
-          console.warn('[UI] Failed to persist restored action choices:', err)
-        })
+        database
+          .setSetting(this.getActionChoicesKey(storyId), JSON.stringify(data))
+          .catch((err) => {
+            console.warn('[UI] Failed to persist restored action choices:', err)
+          })
       } else {
         this.suggestions = parsed as Suggestion[]
         const data: PersistedSuggestions = { storyId, suggestions: parsed as Suggestion[] }

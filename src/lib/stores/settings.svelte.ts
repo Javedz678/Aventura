@@ -2624,19 +2624,24 @@ class SettingsStore {
 
   // Experimental features methods
   async saveExperimentalFeatures() {
-    await database.setSetting(
-      'experimental_features',
-      JSON.stringify(this.experimentalFeatures),
-    )
+    await database.setSetting('experimental_features', JSON.stringify(this.experimentalFeatures))
   }
 
   async updateExperimentalFeatures(updates: Partial<ExperimentalFeatures>) {
     // Enforce dependencies: rollbackOnDelete requires stateTracking
-    if (updates.rollbackOnDelete && !this.experimentalFeatures.stateTracking && !updates.stateTracking) {
+    if (
+      updates.rollbackOnDelete &&
+      !this.experimentalFeatures.stateTracking &&
+      !updates.stateTracking
+    ) {
       updates.rollbackOnDelete = false
     }
     // lightweightBranches requires stateTracking
-    if (updates.lightweightBranches && !this.experimentalFeatures.stateTracking && !updates.stateTracking) {
+    if (
+      updates.lightweightBranches &&
+      !this.experimentalFeatures.stateTracking &&
+      !updates.stateTracking
+    ) {
       updates.lightweightBranches = false
     }
     // Disabling stateTracking cascades
