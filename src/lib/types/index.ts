@@ -133,6 +133,8 @@ export interface StoryEntry {
   originalInput?: string | null // Original user input before translation (for user_action type)
   // Phase 1: World state delta tracking
   worldStateDelta?: WorldStateDelta | null // World state changes caused by this entry's classification
+  // Persisted action suggestions/choices for time-travel restore
+  suggestedActions?: string | null // JSON blob: ActionChoice[] or Suggestion[] depending on story mode
 }
 
 export interface EntryMetadata {

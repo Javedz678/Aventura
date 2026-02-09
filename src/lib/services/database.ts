@@ -466,8 +466,8 @@ class DatabaseService {
     const db = await this.getDb()
     const now = Date.now()
     await db.execute(
-      `INSERT INTO story_entries (id, story_id, type, content, parent_id, position, created_at, metadata, branch_id, reasoning, translated_content, translation_language, original_input, world_state_delta)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO story_entries (id, story_id, type, content, parent_id, position, created_at, metadata, branch_id, reasoning, translated_content, translation_language, original_input, world_state_delta, suggested_actions)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         entry.id,
         entry.storyId,
@@ -483,6 +483,7 @@ class DatabaseService {
         entry.translationLanguage || null,
         entry.originalInput || null,
         entry.worldStateDelta ? JSON.stringify(entry.worldStateDelta) : null,
+        entry.suggestedActions || null,
       ],
     )
     return { ...entry, createdAt: now }
@@ -574,6 +575,10 @@ class DatabaseService {
     if (updates.worldStateDelta !== undefined) {
       setClauses.push('world_state_delta = ?')
       values.push(updates.worldStateDelta ? JSON.stringify(updates.worldStateDelta) : null)
+    }
+    if (updates.suggestedActions !== undefined) {
+      setClauses.push('suggested_actions = ?')
+      values.push(updates.suggestedActions || null)
     }
 
     if (setClauses.length === 0) return
@@ -2211,6 +2216,8 @@ class DatabaseService {
       originalInput: row.original_input || null,
       // Phase 1: World state delta
       worldStateDelta: row.world_state_delta ? JSON.parse(row.world_state_delta) : null,
+      // Persisted action suggestions for time-travel
+      suggestedActions: row.suggested_actions || null,
     }
   }
 

@@ -641,6 +641,43 @@ class StoryStore {
     await database.updateStory(this.currentStory.id, {})
   }
 
+  /**
+   * Restore suggested actions from the new last narration entry after time-travel (delete).
+   * Returns true if saved actions were found and restored, false if regeneration is needed.
+   */
+  private restoreSuggestedActionsAfterDelete(): boolean {
+    if (!this.currentStory) return false
+
+    // Find the new last narration entry (actions attach to narration entries)
+    const lastNarration = [...this.entries].reverse().find((e) => e.type === 'narration')
+
+    const storyMode = this.storyMode
+    const storyId = this.currentStory.id
+
+    if (lastNarration) {
+      const restored = ui.restoreSuggestedActionsFromEntry(
+        storyMode,
+        lastNarration.suggestedActions,
+        storyId,
+      )
+      if (restored) {
+        log('Restored suggested actions from entry at position', lastNarration.position)
+        return true
+      }
+    }
+
+    // No saved actions found — clear current ones so stale actions don't persist
+    if (storyMode === 'adventure') {
+      ui.clearActionChoices(storyId)
+    } else {
+      ui.clearSuggestions(storyId)
+    }
+    // Request auto-regeneration from the UI component
+    ui.suggestionsRegenerationNeeded = true
+    log('No saved suggested actions found after delete — requesting regeneration')
+    return false
+  }
+
   // Delete a story entry
   async deleteEntry(entryId: string): Promise<void> {
     if (!this.currentStory) throw new Error('No story loaded')
@@ -705,6 +742,9 @@ class StoryStore {
         this.currentStory = { ...this.currentStory, timeTracker: freshStory.timeTracker }
       }
 
+      // Restore suggested actions from the new last narration entry
+      this.restoreSuggestedActionsAfterDelete()
+
       return
     }
 
@@ -718,6 +758,9 @@ class StoryStore {
 
     // Update story's updatedAt
     await database.updateStory(this.currentStory.id, {})
+
+    // Restore suggested actions from the new last narration entry
+    this.restoreSuggestedActionsAfterDelete()
   }
 
   /**
@@ -932,6 +975,9 @@ class StoryStore {
 
     // Update story's updatedAt
     await database.updateStory(this.currentStory.id, {})
+
+    // Restore suggested actions from the new last narration entry
+    this.restoreSuggestedActionsAfterDelete()
   }
 
   /**

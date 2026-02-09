@@ -165,6 +165,12 @@ pub fn run() {
             description: "cow_branches",
             sql: include_str!("../migrations/026_cow_branches.sql"),
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 27,
+            description: "entry_suggested_actions",
+            sql: include_str!("../migrations/027_entry_suggested_actions.sql"),
+            kind: MigrationKind::Up,
         }
     ];
 
