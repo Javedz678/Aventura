@@ -1271,6 +1271,28 @@ class StoryStore {
   }
 
   /**
+   * Helper to wrap entity updates in try-catch with toast notifications.
+   * Prevents database errors from breaking the entire classification pipeline.
+   */
+  private classificationErrors = 0
+
+  private async wrapUpdate(label: string, entityName: string, fn: () => Promise<void>) {
+    try {
+      await fn()
+      this.classificationErrors = 0
+    } catch (err) {
+      this.classificationErrors++
+      console.error(`[StoryStore] ${label} failed for ${entityName}:`, err)
+      ui.showToast(`${label} failed: ${entityName}`, 'warning')
+      if (this.classificationErrors >= 3) {
+        const count = this.classificationErrors
+        this.classificationErrors = 0
+        throw new Error(`Classification pipeline aborted after ${count} consecutive failures`)
+      }
+    }
+  }
+
+  /**
    * Apply classification results to update world state.
    * This is Phase 4 of the processing pipeline per design doc.
    */
@@ -1296,236 +1318,256 @@ class StoryStore {
 
     // Apply character updates
     for (const update of result.entryUpdates.characterUpdates) {
-      const existing = this.characters.find(
-        (c) => c.name.toLowerCase() === update.name.toLowerCase(),
-      )
-      if (existing) {
-        log('Updating character:', update.name, update.changes)
-        const changes: Partial<Character> = {}
-        if (update.changes.status) changes.status = update.changes.status
-        if (update.changes.relationship) {
-          if (existing.relationship === 'self') {
-            // Preserve protagonist relationship; only set via explicit swap.
-          } else if (update.changes.relationship !== 'self') {
-            changes.relationship = update.changes.relationship
-          }
-        }
-        if (update.changes.newTraits?.length || update.changes.removeTraits?.length) {
-          let traits = [...existing.traits]
-          if (update.changes.removeTraits?.length) {
-            const toRemove = new Set(update.changes.removeTraits.map((t) => t.toLowerCase()))
-            traits = traits.filter((t) => !toRemove.has(t.toLowerCase()))
-          }
-          if (update.changes.newTraits?.length) {
-            traits = [...traits, ...update.changes.newTraits]
-          }
-          const traitMap = new Map(traits.map((t) => [t.toLowerCase(), t]))
-          changes.traits = Array.from(traitMap.values())
-        }
-        // Handle visual descriptor updates for image generation
-        // New format: visualDescriptors is a structured object that replaces entirely
-        if (
-          update.changes.visualDescriptors &&
-          Object.keys(update.changes.visualDescriptors).length > 0
-        ) {
-          changes.visualDescriptors = update.changes.visualDescriptors
-        }
-        await database.updateCharacter(existing.id, changes)
-        this.characters = this.characters.map((c) =>
-          c.id === existing.id ? { ...c, ...changes } : c,
+      await this.wrapUpdate('Update character', update.name, async () => {
+        const existing = this.characters.find(
+          (c) => c.name.toLowerCase() === update.name.toLowerCase(),
         )
-      }
+        if (existing) {
+          log('Updating character:', update.name, update.changes)
+          const changes: Partial<Character> = {}
+          if (update.changes.status) changes.status = update.changes.status
+          if (update.changes.relationship) {
+            if (existing.relationship === 'self') {
+              // Preserve protagonist relationship; only set via explicit swap.
+            } else if (update.changes.relationship !== 'self') {
+              changes.relationship = update.changes.relationship
+            }
+          }
+          if (update.changes.newTraits?.length || update.changes.removeTraits?.length) {
+            let traits = [...existing.traits]
+            if (update.changes.removeTraits?.length) {
+              const toRemove = new Set(update.changes.removeTraits.map((t) => t.toLowerCase()))
+              traits = traits.filter((t) => !toRemove.has(t.toLowerCase()))
+            }
+            if (update.changes.newTraits?.length) {
+              traits = [...traits, ...update.changes.newTraits]
+            }
+            const traitMap = new Map(traits.map((t) => [t.toLowerCase(), t]))
+            changes.traits = Array.from(traitMap.values())
+          }
+          // Handle visual descriptor updates for image generation
+          // New format: visualDescriptors is a structured object that replaces entirely
+          if (
+            update.changes.visualDescriptors &&
+            Object.keys(update.changes.visualDescriptors).length > 0
+          ) {
+            changes.visualDescriptors = update.changes.visualDescriptors
+          }
+          await database.updateCharacter(existing.id, changes)
+          this.characters = this.characters.map((c) =>
+            c.id === existing.id ? { ...c, ...changes } : c,
+          )
+        }
+      })
     }
 
     // Apply location updates
     for (const update of result.entryUpdates.locationUpdates) {
-      const existing = this.locations.find(
-        (l) => l.name.toLowerCase() === update.name.toLowerCase(),
-      )
-      if (existing) {
-        log('Updating location:', update.name, update.changes)
-        const changes: Partial<Location> = {}
-        if (update.changes.visited !== undefined) changes.visited = update.changes.visited
-        if (update.changes.descriptionAddition) {
-          const addition = update.changes.descriptionAddition.trim()
-          if (addition) {
-            changes.description = existing.description
-              ? `${existing.description} ${addition}`
-              : addition
-          }
-        }
-
-        if (update.changes.current === true) {
-          changes.visited = true
-          await database.setCurrentLocation(storyId, existing.id)
-          if (Object.keys(changes).length > 0) {
-            await database.updateLocation(existing.id, changes)
-          }
-          this.locations = this.locations.map((l) => {
-            if (l.id === existing.id) {
-              return { ...l, ...changes, current: true, visited: true }
-            }
-            return { ...l, current: false }
-          })
-          continue
-        }
-
-        if (update.changes.current === false) changes.current = false
-        if (Object.keys(changes).length === 0) continue
-        await database.updateLocation(existing.id, changes)
-        this.locations = this.locations.map((l) =>
-          l.id === existing.id ? { ...l, ...changes } : l,
+      await this.wrapUpdate('Update location', update.name, async () => {
+        const existing = this.locations.find(
+          (l) => l.name.toLowerCase() === update.name.toLowerCase(),
         )
-      }
+        if (existing) {
+          log('Updating location:', update.name, update.changes)
+          const changes: Partial<Location> = {}
+          if (update.changes.visited !== undefined) changes.visited = update.changes.visited
+          if (update.changes.descriptionAddition) {
+            const addition = update.changes.descriptionAddition.trim()
+            if (addition) {
+              changes.description = existing.description
+                ? `${existing.description} ${addition}`
+                : addition
+            }
+          }
+
+          if (update.changes.current === true) {
+            changes.visited = true
+            await database.setCurrentLocation(storyId, existing.id)
+            if (Object.keys(changes).length > 0) {
+              await database.updateLocation(existing.id, changes)
+            }
+            this.locations = this.locations.map((l) => {
+              if (l.id === existing.id) {
+                return { ...l, ...changes, current: true, visited: true }
+              }
+              return { ...l, current: false }
+            })
+            return
+          }
+
+          if (update.changes.current === false) changes.current = false
+          if (Object.keys(changes).length === 0) return
+          await database.updateLocation(existing.id, changes)
+          this.locations = this.locations.map((l) =>
+            l.id === existing.id ? { ...l, ...changes } : l,
+          )
+        }
+      })
     }
 
     // Apply item updates
     for (const update of result.entryUpdates.itemUpdates) {
-      const existing = this.items.find((i) => i.name.toLowerCase() === update.name.toLowerCase())
-      if (existing) {
-        log('Updating item:', update.name, update.changes)
-        const changes: Partial<Item> = {}
-        if (update.changes.quantity !== undefined) changes.quantity = update.changes.quantity
-        if (update.changes.equipped !== undefined) changes.equipped = update.changes.equipped
-        if (update.changes.location) changes.location = update.changes.location
-        await database.updateItem(existing.id, changes)
-        this.items = this.items.map((i) => (i.id === existing.id ? { ...i, ...changes } : i))
-      }
+      await this.wrapUpdate('Update item', update.name, async () => {
+        const existing = this.items.find((i) => i.name.toLowerCase() === update.name.toLowerCase())
+        if (existing) {
+          log('Updating item:', update.name, update.changes)
+          const changes: Partial<Item> = {}
+          if (update.changes.quantity !== undefined) changes.quantity = update.changes.quantity
+          if (update.changes.equipped !== undefined) changes.equipped = update.changes.equipped
+          if (update.changes.location) changes.location = update.changes.location
+          await database.updateItem(existing.id, changes)
+          this.items = this.items.map((i) => (i.id === existing.id ? { ...i, ...changes } : i))
+        }
+      })
     }
 
     // Apply story beat updates (mark as completed/failed)
     for (const update of result.entryUpdates.storyBeatUpdates) {
-      const existing = this.storyBeats.find(
-        (b) => b.title.toLowerCase() === update.title.toLowerCase(),
-      )
-      if (existing) {
-        log('Updating story beat:', update.title, update.changes)
-        const changes: Partial<StoryBeat> = {}
-        if (update.changes.status) {
-          changes.status = update.changes.status
-          // Set resolvedAt timestamp when completing or failing
-          if (update.changes.status === 'completed' || update.changes.status === 'failed') {
-            changes.resolvedAt = Date.now()
-          }
-        }
-        if (update.changes.description) changes.description = update.changes.description
-        await database.updateStoryBeat(existing.id, changes)
-        this.storyBeats = this.storyBeats.map((b) =>
-          b.id === existing.id ? { ...b, ...changes } : b,
+      await this.wrapUpdate('Update story beat', update.title, async () => {
+        const existing = this.storyBeats.find(
+          (b) => b.title.toLowerCase() === update.title.toLowerCase(),
         )
-      }
+        if (existing) {
+          log('Updating story beat:', update.title, update.changes)
+          const changes: Partial<StoryBeat> = {}
+          if (update.changes.status) {
+            changes.status = update.changes.status
+            // Set resolvedAt timestamp when completing or failing
+            if (update.changes.status === 'completed' || update.changes.status === 'failed') {
+              changes.resolvedAt = Date.now()
+            }
+          }
+          if (update.changes.description) changes.description = update.changes.description
+          await database.updateStoryBeat(existing.id, changes)
+          this.storyBeats = this.storyBeats.map((b) =>
+            b.id === existing.id ? { ...b, ...changes } : b,
+          )
+        }
+      })
     }
 
     // Add new characters (check for duplicates)
     for (const newChar of result.entryUpdates.newCharacters) {
-      const exists = this.characters.some(
-        (c) => c.name.toLowerCase() === newChar.name.toLowerCase(),
-      )
-      if (!exists) {
-        log('Adding new character:', newChar.name)
-        const character: Character = {
-          id: crypto.randomUUID(),
-          storyId,
-          name: newChar.name,
-          description: newChar.description ?? null,
-          relationship: newChar.relationship ?? null,
-          traits: newChar.traits ?? [],
-          visualDescriptors: newChar.visualDescriptors ?? {},
-          status: 'active',
-          metadata: { source: 'classifier' },
-          portrait: null,
-          branchId: this.currentStory?.currentBranchId ?? null,
+      await this.wrapUpdate('Add character', newChar.name, async () => {
+        const exists = this.characters.some(
+          (c) => c.name.toLowerCase() === newChar.name.toLowerCase(),
+        )
+        if (!exists) {
+          log('Adding new character:', newChar.name)
+          const character: Character = {
+            id: crypto.randomUUID(),
+            storyId,
+            name: newChar.name,
+            description: newChar.description ?? null,
+            relationship: newChar.relationship ?? null,
+            traits: newChar.traits ?? [],
+            visualDescriptors: newChar.visualDescriptors ?? {},
+            status: 'active',
+            metadata: { source: 'classifier' },
+            portrait: null,
+            branchId: this.currentStory?.currentBranchId ?? null,
+          }
+          await database.addCharacter(character)
+          this.characters = [...this.characters, character]
         }
-        await database.addCharacter(character)
-        this.characters = [...this.characters, character]
-      }
+      })
     }
 
     // Add new locations (check for duplicates)
     for (const newLoc of result.entryUpdates.newLocations) {
-      const exists = this.locations.some((l) => l.name.toLowerCase() === newLoc.name.toLowerCase())
-      if (!exists) {
-        log('Adding new location:', newLoc.name)
-        // If this is the current location, unset others first
-        if (newLoc.current) {
-          this.locations = this.locations.map((l) => ({ ...l, current: false }))
-          for (const l of this.locations) {
-            await database.updateLocation(l.id, { current: false })
+      await this.wrapUpdate('Add location', newLoc.name, async () => {
+        const exists = this.locations.some(
+          (l) => l.name.toLowerCase() === newLoc.name.toLowerCase(),
+        )
+        if (!exists) {
+          log('Adding new location:', newLoc.name)
+          // If this is the current location, unset others first
+          if (newLoc.current) {
+            this.locations = this.locations.map((l) => ({ ...l, current: false }))
+            for (const l of this.locations) {
+              await database.updateLocation(l.id, { current: false })
+            }
           }
+          const location: Location = {
+            id: crypto.randomUUID(),
+            storyId,
+            name: newLoc.name,
+            description: newLoc.description ?? null,
+            visited: newLoc.visited ?? false,
+            current: newLoc.current ?? false,
+            connections: [],
+            metadata: { source: 'classifier' },
+            branchId: this.currentStory?.currentBranchId ?? null,
+          }
+          await database.addLocation(location)
+          this.locations = [...this.locations, location]
         }
-        const location: Location = {
-          id: crypto.randomUUID(),
-          storyId,
-          name: newLoc.name,
-          description: newLoc.description ?? null,
-          visited: newLoc.visited ?? false,
-          current: newLoc.current ?? false,
-          connections: [],
-          metadata: { source: 'classifier' },
-          branchId: this.currentStory?.currentBranchId ?? null,
-        }
-        await database.addLocation(location)
-        this.locations = [...this.locations, location]
-      }
+      })
     }
 
     // Handle scene.currentLocationName - update current location if specified
     if (result.scene.currentLocationName) {
-      const locationName = result.scene.currentLocationName.toLowerCase()
-      const currentLoc = this.locations.find((l) => l.name.toLowerCase() === locationName)
-      if (currentLoc && !currentLoc.current) {
-        log('Setting current location from scene:', currentLoc.name)
-        await database.setCurrentLocation(storyId, currentLoc.id)
-        this.locations = this.locations.map((l) => ({
-          ...l,
-          current: l.id === currentLoc.id,
-          visited: l.id === currentLoc.id ? true : l.visited,
-        }))
-      }
+      await this.wrapUpdate('Set scene location', result.scene.currentLocationName, async () => {
+        const locationName = result.scene.currentLocationName!.toLowerCase()
+        const currentLoc = this.locations.find((l) => l.name.toLowerCase() === locationName)
+        if (currentLoc && !currentLoc.current) {
+          log('Setting current location from scene:', currentLoc.name)
+          await database.setCurrentLocation(storyId, currentLoc.id)
+          this.locations = this.locations.map((l) => ({
+            ...l,
+            current: l.id === currentLoc.id,
+            visited: l.id === currentLoc.id ? true : l.visited,
+          }))
+        }
+      })
     }
 
     // Add new items (check for duplicates)
     for (const newItem of result.entryUpdates.newItems) {
-      const exists = this.items.some((i) => i.name.toLowerCase() === newItem.name.toLowerCase())
-      if (!exists) {
-        log('Adding new item:', newItem.name)
-        const item: Item = {
-          id: crypto.randomUUID(),
-          storyId,
-          name: newItem.name,
-          description: newItem.description ?? null,
-          quantity: newItem.quantity ?? 1,
-          equipped: false,
-          location: newItem.location ?? 'inventory',
-          metadata: { source: 'classifier' },
-          branchId: this.currentStory?.currentBranchId ?? null,
+      await this.wrapUpdate('Add item', newItem.name, async () => {
+        const exists = this.items.some((i) => i.name.toLowerCase() === newItem.name.toLowerCase())
+        if (!exists) {
+          log('Adding new item:', newItem.name)
+          const item: Item = {
+            id: crypto.randomUUID(),
+            storyId,
+            name: newItem.name,
+            description: newItem.description ?? null,
+            quantity: newItem.quantity ?? 1,
+            equipped: false,
+            location: newItem.location ?? 'inventory',
+            metadata: { source: 'classifier' },
+            branchId: this.currentStory?.currentBranchId ?? null,
+          }
+          await database.addItem(item)
+          this.items = [...this.items, item]
         }
-        await database.addItem(item)
-        this.items = [...this.items, item]
-      }
+      })
     }
 
     // Add new story beats (check for duplicates by title)
     for (const newBeat of result.entryUpdates.newStoryBeats) {
-      const exists = this.storyBeats.some(
-        (b) => b.title.toLowerCase() === newBeat.title.toLowerCase(),
-      )
-      if (!exists) {
-        log('Adding new story beat:', newBeat.title)
-        const beat: StoryBeat = {
-          id: crypto.randomUUID(),
-          storyId,
-          title: newBeat.title,
-          description: newBeat.description ?? null,
-          type: newBeat.type ?? 'event',
-          status: newBeat.status ?? 'active',
-          triggeredAt: Date.now(),
-          metadata: { source: 'classifier' },
-          branchId: this.currentStory?.currentBranchId ?? null,
+      await this.wrapUpdate('Add story beat', newBeat.title, async () => {
+        const exists = this.storyBeats.some(
+          (b) => b.title.toLowerCase() === newBeat.title.toLowerCase(),
+        )
+        if (!exists) {
+          log('Adding new story beat:', newBeat.title)
+          const beat: StoryBeat = {
+            id: crypto.randomUUID(),
+            storyId,
+            title: newBeat.title,
+            description: newBeat.description ?? null,
+            type: newBeat.type ?? 'event',
+            status: newBeat.status ?? 'active',
+            triggeredAt: Date.now(),
+            metadata: { source: 'classifier' },
+            branchId: this.currentStory?.currentBranchId ?? null,
+          }
+          await database.addStoryBeat(beat)
+          this.storyBeats = [...this.storyBeats, beat]
         }
-        await database.addStoryBeat(beat)
-        this.storyBeats = [...this.storyBeats, beat]
-      }
+      })
     }
 
     // Apply time progression from scene data
@@ -2512,7 +2554,9 @@ class StoryStore {
       })
 
       // Determine entries to delete (those added since the backup)
-      const entriesToDelete = this.entries.slice(backup.entryCountBeforeAction)
+      const entriesToDelete = this.entries.filter(
+        (e) => e.position >= backup.entryCountBeforeAction,
+      )
       const entryIdsToDelete = entriesToDelete.map((e) => e.id)
 
       log('Restoring from retry backup...', {
@@ -2522,42 +2566,28 @@ class StoryStore {
         embeddedImagesCount: backup.embeddedImages.length,
       })
 
-      // Restore to database
+      // Restore to database (branch-aware: only delete/restore world state for current branch)
       await database.restoreRetryBackup(
         entryIdsToDelete,
         this.currentStory.id,
+        this.currentStory.currentBranchId,
         backup.characters,
         backup.locations,
         backup.items,
         backup.storyBeats,
       )
 
-      // Reload from database to ensure a clean, fully restored state
-      // Note: Lorebook entries are NOT reloaded as they persist across retry operations
-      const [entries, characters, locations, items, storyBeats] = await Promise.all([
-        database.getStoryEntries(this.currentStory.id),
-        database.getCharacters(this.currentStory.id),
-        database.getLocations(this.currentStory.id),
-        database.getItems(this.currentStory.id),
-        database.getStoryBeats(this.currentStory.id),
-      ])
+      // Reload from database using branch-aware method for clean state
+      await this.reloadEntriesForCurrentBranch()
 
       // Debug: Log what we got back from database
-      const dbCharDescriptors = characters.map((c) => ({
+      const dbCharDescriptors = this.characters.map((c) => ({
         name: c.name,
         visualDescriptors: c.visualDescriptors,
       }))
       log('RESTORE DEBUG - After DB reload:', {
         dbCharDescriptors,
       })
-
-      // Update local state
-      // Note: Lorebook entries are NOT updated as they persist across retry operations
-      this.entries = entries
-      this.characters = characters
-      this.locations = locations
-      this.items = items
-      this.storyBeats = storyBeats
 
       // Invalidate caches after state restore
       this.invalidateWordCountCache()
