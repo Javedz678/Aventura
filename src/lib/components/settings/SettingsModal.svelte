@@ -312,8 +312,8 @@
                   {:else if tab.id === 'experimental'}
                     <ExperimentalSettings />
                   {/if}
-                </div></TabsContent
-              >
+                </div>
+              </TabsContent>
             {/each}
           </Tabs>
         </div>
