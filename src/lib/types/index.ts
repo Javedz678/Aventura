@@ -62,6 +62,9 @@ export interface PersistentRetryState {
   characterSnapshots?: PersistentCharacterSnapshot[] // Added in v1.4.1 for retry state restoration
   // Story time snapshot captured before the user action (optional for backwards compatibility)
   timeTracker?: TimeTracker | null
+  // Lorebook activation data for stickiness preservation (optional for backwards compatibility)
+  activationData?: Record<string, number>
+  storyPosition?: number
 }
 
 export interface PersistentCharacterSnapshot {

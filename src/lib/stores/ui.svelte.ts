@@ -152,16 +152,9 @@ class UIStore {
   // Computed getter for current story's retry backup
   get retryBackup(): RetryBackup | null {
     if (!this.currentRetryStoryId) {
-      console.log('[UI] retryBackup getter: no currentRetryStoryId')
       return null
     }
     const backup = this.retryBackups.get(this.currentRetryStoryId) ?? null
-    console.log('[UI] retryBackup getter:', {
-      currentRetryStoryId: this.currentRetryStoryId,
-      hasBackup: !!backup,
-      hasFullState: backup?.hasFullState,
-      backupStoryId: backup?.storyId,
-    })
     return backup
   }
 
@@ -561,9 +554,9 @@ class UIStore {
     const backup: RetryBackup = {
       storyId,
       timestamp,
-      // Large data - store reference (safe due to immutable update patterns)
-      entries: entries,
-      embeddedImages: embeddedImages,
+      // Large data - shallow copy to break potential proxy chains
+      entries: [...entries],
+      embeddedImages: [...embeddedImages],
       // Smaller data - shallow copy to break proxy chains
       characters: copyCharacters(characters),
       locations: copyLocations(locations),
@@ -641,6 +634,8 @@ class UIStore {
           embeddedImageIds,
           characterSnapshots,
           timeTracker: timeTracker ? { ...timeTracker } : null,
+          activationData: Object.fromEntries(Object.entries(this.activationData)),
+          storyPosition: this.currentStoryPosition,
         }),
       'persist',
     )
@@ -708,6 +703,8 @@ class UIStore {
       embeddedImageIds?: string[]
       characterSnapshots?: PersistentCharacterSnapshot[]
       timeTracker?: TimeTracker | null
+      activationData?: Record<string, number>
+      storyPosition?: number
     },
   ) {
     // Skip if we already have an in-memory backup for this story (it's more complete)
@@ -755,9 +752,9 @@ class UIStore {
       rawInput: retryState.rawInput,
       actionType: retryState.actionType,
       wasRawActionChoice: retryState.wasRawActionChoice,
-      // Empty activation data
-      activationData: {},
-      storyPosition: 0,
+      // Restore activation data from persistent state if available
+      activationData: retryState.activationData ?? {},
+      storyPosition: retryState.storyPosition ?? 0,
       // Persistent retry fields
       entryCountBeforeAction: retryState.entryCountBeforeAction,
       hasFullState: false, // Indicates ID-based restore

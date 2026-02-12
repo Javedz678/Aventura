@@ -1400,6 +1400,7 @@ class DatabaseService {
   async restoreRetryBackup(
     entryIdsToDelete: string[],
     storyId: string,
+    branchId: string | null,
     characters: Character[],
     locations: Location[],
     items: Item[],
@@ -1412,10 +1413,13 @@ class DatabaseService {
     if (entryIdsToDelete.length > 0) {
       await this.deleteStoryEntries(entryIdsToDelete)
     }
-    await db.execute('DELETE FROM characters WHERE story_id = ?', [storyId])
-    await db.execute('DELETE FROM locations WHERE story_id = ?', [storyId])
-    await db.execute('DELETE FROM items WHERE story_id = ?', [storyId])
-    await db.execute('DELETE FROM story_beats WHERE story_id = ?', [storyId])
+    // Branch-aware delete: only remove world state for the current branch
+    const branchFilter = branchId === null ? 'AND branch_id IS NULL' : 'AND branch_id = ?'
+    const branchParams = branchId === null ? [storyId] : [storyId, branchId]
+    await db.execute(`DELETE FROM characters WHERE story_id = ? ${branchFilter}`, branchParams)
+    await db.execute(`DELETE FROM locations WHERE story_id = ? ${branchFilter}`, branchParams)
+    await db.execute(`DELETE FROM items WHERE story_id = ? ${branchFilter}`, branchParams)
+    await db.execute(`DELETE FROM story_beats WHERE story_id = ? ${branchFilter}`, branchParams)
 
     // Restore entries not necessary as we are only deleting redundant entries since backup
 
@@ -2035,6 +2039,10 @@ class DatabaseService {
     if (updates.styleId !== undefined) {
       setClauses.push('style_id = ?')
       values.push(updates.styleId)
+    }
+    if (updates.sourceText !== undefined) {
+      setClauses.push('source_text = ?')
+      values.push(updates.sourceText)
     }
 
     if (setClauses.length === 0) return
